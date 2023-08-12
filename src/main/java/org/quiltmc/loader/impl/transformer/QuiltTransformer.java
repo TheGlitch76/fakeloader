@@ -22,7 +22,6 @@ import java.util.HashSet;
 
 import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.impl.QuiltLoaderImpl;
-import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 import org.objectweb.asm.ClassReader;
@@ -37,11 +36,10 @@ public final class QuiltTransformer {
 	public static byte[] transform(boolean isDevelopment, Environment environment, String name, byte[] bytes) {
 		// FIXME: Could use a better way to detect this...
 		boolean isMinecraftClass = name.startsWith("net.minecraft.") || name.startsWith("com.mojang.blaze3d.") || name.indexOf('.') < 0;
-		boolean transformAccess = isMinecraftClass && false;
 		boolean environmentStrip = !isMinecraftClass || isDevelopment;
 		boolean applyAccessWidener = isMinecraftClass && QuiltLoaderImpl.INSTANCE.getAccessWidener().getTargets().contains(name);
 
-		if (!transformAccess && !environmentStrip && !applyAccessWidener) {
+		if (!environmentStrip && !applyAccessWidener) {
 			return bytes;
 		}
 
@@ -103,10 +101,6 @@ public final class QuiltTransformer {
 			visitorCount++;
 		}
 
-		if (transformAccess) {
-			visitor = new PackageAccessFixer(QuiltLoaderImpl.ASM_VERSION, visitor);
-			visitorCount++;
-		}
 
 		if (visitorCount <= 0) {
 			return bytes;

@@ -14,7 +14,6 @@ enum McLibrary implements LibClassifier.LibraryType {
 	MC_ASSETS_ROOT("assets/.mcassetsroot"),
 	MC_BUNDLER(Environment.DEDICATED_SERVER, "net/minecraft/bundler/Main.class"),
 	REALMS(Environment.CLIENT, "realmsVersion", "com/mojang/realmsclient/RealmsVersion.class"),
-	MODLOADER("ModLoader"),
 	LOG4J_API("org/apache/logging/log4j/LogManager.class"),
 	LOG4J_CORE("META-INF/services/org.apache.logging.log4j.spi.Provider", "META-INF/log4j-provider.properties"),
 	LOG4J_CONFIG("log4j2.xml"),

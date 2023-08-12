@@ -4,6 +4,7 @@ package org.quiltmc.loader.impl.junit;
 
 import org.junit.platform.launcher.LauncherSession;
 import org.junit.platform.launcher.LauncherSessionListener;
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.impl.launch.knot.Knot;
 import org.quiltmc.loader.impl.util.SystemProperties;
 

@@ -12,6 +12,7 @@ minecraft {
 			mainClass = "org.quiltmc.loader.impl.launch.knot.KnotClient"
     		classpath.from(project(':').sourceSets.main.output)
     		classpath.from(project(':minecraft').sourceSets.main.output)
+			jvmArgs("-Dloader.development=true")
 		}
 	}
 }

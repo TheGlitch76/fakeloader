@@ -42,7 +42,7 @@ import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 import org.quiltmc.loader.impl.util.UrlUtil;
 
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_EXPOSED)
-class KnotClassLoader extends SecureClassLoader implements KnotClassLoaderInterface {
+class KnotClassLoader extends SecureClassLoader {
 	private static class DynamicURLClassLoader extends URLClassLoader {
 		private DynamicURLClassLoader(URL[] urls) {
 			super(urls, new DummyClassLoader());
@@ -74,17 +74,14 @@ class KnotClassLoader extends SecureClassLoader implements KnotClassLoaderInterf
 		this.delegate = new KnotClassDelegate(isDevelopment, environment, this, provider);
 	}
 
-	@Override
 	public KnotClassDelegate getDelegate() {
 		return delegate;
 	}
 
-	@Override
 	public ClassLoader getOriginalLoader() {
 		return originalLoader;
 	}
 
-	@Override
 	public boolean isClassLoaded(String name) {
 		synchronized (getClassLoadingLock(name)) {
 			return findLoadedClass(name) != null;
@@ -96,7 +93,6 @@ class KnotClassLoader extends SecureClassLoader implements KnotClassLoaderInterf
 		return getResource(name, true);
 	}
 
-	@Override
 	public URL getResource(String name, boolean allowFromParent) {
 		Objects.requireNonNull(name);
 
@@ -109,7 +105,6 @@ class KnotClassLoader extends SecureClassLoader implements KnotClassLoaderInterf
 		return url;
 	}
 
-	@Override
 	public URL findResource(String name) {
 		Objects.requireNonNull(name);
 
@@ -125,7 +120,6 @@ class KnotClassLoader extends SecureClassLoader implements KnotClassLoaderInterf
 		return minimalLoader.getResource(name);
 	}
 
-	@Override
 	public InputStream getResourceAsStream(String name) {
 		Objects.requireNonNull(name);
 
@@ -218,12 +212,10 @@ class KnotClassLoader extends SecureClassLoader implements KnotClassLoaderInterf
 		};
 	}
 
-	@Override
 	public void resolveClassFwd(Class<?> c) {
 		resolveClass(c);
 	}
 
-	@Override
 	public Class<?> findLoadedClassFwd(String name) {
 		return findLoadedClass(name);
 	}
@@ -240,7 +232,6 @@ class KnotClassLoader extends SecureClassLoader implements KnotClassLoaderInterf
 		return delegate.tryLoadClass(name, false);
 	}
 
-	@Override
 	public Class<?> loadIntoTarget(String name) throws ClassNotFoundException {
 		synchronized (getClassLoadingLock(name)) {
 			Class<?> c = findLoadedClass(name);
@@ -252,7 +243,7 @@ class KnotClassLoader extends SecureClassLoader implements KnotClassLoaderInterf
 					throw new ClassNotFoundException("can't find class "+name);
 				}
 
-				((KnotBaseClassLoader) c.getClassLoader()).resolveClassFwd(c);
+				((KnotClassLoader) c.getClassLoader()).resolveClassFwd(c);
 			} else {
 				resolveClass(c);
 			}
@@ -261,13 +252,11 @@ class KnotClassLoader extends SecureClassLoader implements KnotClassLoaderInterf
 		}
 	}
 
-	@Override
 	public void addURL(URL url) {
 		fakeLoader.addURL(url);
 		minimalLoader.addURL(url);
 	}
 
-	@Override
 	public void addPath(Path root, ModContainer mod, URL origin) {
 		URL asUrl;
 		try {
@@ -285,7 +274,6 @@ class KnotClassLoader extends SecureClassLoader implements KnotClassLoaderInterf
 		}
 	}
 
-	@Override
 	public InputStream getResourceAsStream(String classFile, boolean allowFromParent) throws IOException {
 		Path path = paths.findResource(classFile);
 		if (path != null) {
@@ -311,7 +299,6 @@ class KnotClassLoader extends SecureClassLoader implements KnotClassLoaderInterf
 		return super.definePackage(name, specTitle, specVersion, specVendor, implTitle, implVersion, implVendor, sealBase);
 	}
 
-	@Override
 	public Class<?> defineClassFwd(String name, byte[] b, int off, int len, CodeSource cs) {
 		return super.defineClass(name, b, off, len, cs);
 	}

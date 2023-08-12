@@ -90,7 +90,7 @@ class KnotClassDelegate {
 
 	private final Map<String, Metadata> metadataCache = new ConcurrentHashMap<>();
 	private final Map<String, String> modCodeSourceMap = new ConcurrentHashMap<>();
-	private final KnotClassLoaderInterface itf;
+	private final KnotClassLoader itf;
 	private final GameProvider provider;
 	private final boolean isDevelopment;
 	private final Environment environment;
@@ -108,7 +108,7 @@ class KnotClassDelegate {
 	/** Map of package to whether we can load it in this environment. */
 	private final Map<String, Boolean> packageSideCache = new ConcurrentHashMap<>();
 
-	KnotClassDelegate(boolean isDevelopment, Environment environment, KnotClassLoaderInterface itf, GameProvider provider) {
+	KnotClassDelegate(boolean isDevelopment, Environment environment, KnotClassLoader itf, GameProvider provider) {
 		this.isDevelopment = isDevelopment;
 		this.environment = environment;
 		this.itf = itf;

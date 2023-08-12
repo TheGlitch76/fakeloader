@@ -304,10 +304,6 @@ public class TransformCache {
 		throws ModResolutionException, IOException {
 		QuiltMapFileSystem.dumpEntries(root.getFileSystem(), "after-remap");
 
-		if (Boolean.getBoolean(SystemProperties.ENABLE_EXPERIMENTAL_CHASM)) {
-			ChasmInvoker.applyChasm(root, modList, solveResult);
-		}
-
 		InternalsHiderTransform internalsHider = new InternalsHiderTransform(InternalsHiderTransform.Target.MOD);
 		Map<Path, ModLoadOption> classes = new HashMap<>();
 

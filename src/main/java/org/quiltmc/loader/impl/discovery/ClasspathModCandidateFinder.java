@@ -58,7 +58,6 @@ public class ClasspathModCandidateFinder {
 
 			// Search for URLs which point to 'fabric.mod.json' entries, to be considered as mods.
 			try {
-				Enumeration<URL> fabricMods = QuiltLauncherBase.getLauncher().getTargetClassLoader().getResources("fabric.mod.json");
 				Enumeration<URL> quiltMods = QuiltLauncherBase.getLauncher().getTargetClassLoader().getResources("quilt.mod.json");
 				while (quiltMods.hasMoreElements()) {
 					URL url = quiltMods.nextElement();
@@ -74,22 +73,6 @@ public class ClasspathModCandidateFinder {
 						}
 					} catch (UrlConversionException e) {
 						Log.debug(LogCategory.DISCOVERY, "Error determining location for quilt.mod.json from %s", url, e);
-					}
-				}
-				while (fabricMods.hasMoreElements()) {
-					URL url = fabricMods.nextElement();
-
-					try {
-						Path path = LoaderUtil.normalizeExistingPath(UrlUtil.getCodeSource(url, "fabric.mod.json"));
-						List<Path> paths = pathGroups.get(path);
-
-						if (paths == null) {
-							out.addMod(Collections.singletonList(path));
-						} else {
-							out.addMod(paths);
-						}
-					} catch (UrlConversionException e) {
-						Log.debug(LogCategory.DISCOVERY, "Error determining location for fabric.mod.json from %s", url, e);
 					}
 				}
 			} catch (IOException e) {

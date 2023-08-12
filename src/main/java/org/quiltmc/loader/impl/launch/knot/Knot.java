@@ -60,7 +60,7 @@ import java.util.zip.ZipFile;
 public final class Knot extends QuiltLauncherBase {
 	protected Map<String, Object> properties = new HashMap<>();
 
-	private KnotClassLoaderInterface classLoader;
+	private KnotClassLoader classLoader;
 	private boolean isDevelopment;
 	private Environment environment;
 	private final List<Path> classPath = new ArrayList<>();
@@ -132,14 +132,11 @@ public final class Knot extends QuiltLauncherBase {
 		isDevelopment = Boolean.parseBoolean(System.getProperty(SystemProperties.DEVELOPMENT, "false"));
 
 		// Setup classloader
-		// TODO: Provide KnotCompatibilityClassLoader in non-exclusive-Fabric pre-1.13 environments?
-		boolean useCompatibility = provider.requiresUrlClassLoader() || Boolean.parseBoolean(System.getProperty("fabric.loader.useCompatibilityClassLoader", "false"));
-		classLoader = useCompatibility ? new KnotCompatibilityClassLoader(isDevelopment(), environment, provider) : new KnotClassLoader(isDevelopment(), environment, provider);
-		ClassLoader cl = (ClassLoader) classLoader;
+		classLoader = new KnotClassLoader(isDevelopment(), environment, provider);
 
 		provider.initialize(this);
 
-		Thread.currentThread().setContextClassLoader(cl);
+		Thread.currentThread().setContextClassLoader(classLoader);
 
 		QuiltLoaderImpl loader = QuiltLoaderImpl.INSTANCE;
 		loader.setGameProvider(provider);
@@ -173,7 +170,7 @@ public final class Knot extends QuiltLauncherBase {
 
 		loader.invokePreLaunch();
 
-		return cl;
+		return classLoader;
 	}
 
 	private GameProvider createGameProvider(String[] args) {
@@ -260,8 +257,7 @@ public final class Knot extends QuiltLauncherBase {
 
 	@Override
 	public String getTargetNamespace() {
-		// TODO: Won't work outside of Yarn
-		return isDevelopment ? "named" : "intermediary";
+		return "mojmap";
 	}
 
 	@Override

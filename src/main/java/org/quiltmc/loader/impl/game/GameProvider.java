@@ -42,8 +42,6 @@ public interface GameProvider {
 
 	String getEntrypoint();
 	Path getLaunchDirectory();
-	boolean isObfuscated();
-	boolean requiresUrlClassLoader();
 
 	boolean isEnabled();
 	boolean locateGame(QuiltLauncher launcher, String[] args);
@@ -51,9 +49,7 @@ public interface GameProvider {
 	GameTransformer getEntrypointTransformer();
 	void unlockClassPath(QuiltLauncher launcher);
 	void launch(ClassLoader loader);
-	default boolean isGameClass(String name) {
-		return true;
-	}
+
 
 	default boolean displayCrash(Throwable exception, String context) {
 		return false;

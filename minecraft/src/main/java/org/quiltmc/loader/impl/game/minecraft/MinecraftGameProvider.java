@@ -82,7 +82,6 @@ public class MinecraftGameProvider implements GameProvider {
 	private final List<Path> miscGameLibraries = new ArrayList<>(); // libraries not relevant for loader's uses
 	private McVersion versionData;
 	private boolean useGameJarForLogging;
-	private boolean hasModLoader = false;
 
 	private final GameTransformer transformer = new GameTransformer(
 			new EntrypointPatch(this),
@@ -176,16 +175,6 @@ public class MinecraftGameProvider implements GameProvider {
 	}
 
 	@Override
-	public boolean isObfuscated() {
-		return true; // generally yes...
-	}
-
-	@Override
-	public boolean requiresUrlClassLoader() {
-		return hasModLoader;
-	}
-
-	@Override
 	public boolean isEnabled() {
 		return System.getProperty(SystemProperties.SKIP_MC_PROVIDER) == null;
 	}
@@ -250,7 +239,6 @@ public class MinecraftGameProvider implements GameProvider {
 
 			entrypoint = classifier.getClassName(envGameLib);
 			realmsJar = classifier.getOrigin(McLibrary.REALMS);
-			hasModLoader = classifier.has(McLibrary.MODLOADER);
 			log4jAvailable = classifier.has(McLibrary.LOG4J_API) && classifier.has(McLibrary.LOG4J_CORE);
 			slf4jAvailable = classifier.has(McLibrary.SLF4J_API) && classifier.has(McLibrary.SLF4J_CORE);
 			boolean hasLogLib = log4jAvailable || slf4jAvailable;
@@ -334,52 +322,46 @@ public class MinecraftGameProvider implements GameProvider {
 		return Paths.get(argMap.getOrDefault("gameDir", "."));
 	}
 
-	@Override
-	public boolean isGameClass(String name) {
-		return name.startsWith("net.minecraft.");
-	}
 
 	@Override
 	public void initialize(QuiltLauncher launcher) {
-		if (isObfuscated()) {
-			Map<String, Path> obfJars = new HashMap<>(3);
-			String[] names = new String[gameJars.size()];
+        Map<String, Path> obfJars = new HashMap<>(3);
+        String[] names = new String[gameJars.size()];
 
-			for (int i = 0; i < gameJars.size(); i++) {
-				String name;
+        for (int i = 0; i < gameJars.size(); i++) {
+            String name;
 
-				if (i == 0) {
-					name = envType.name().toLowerCase(Locale.ENGLISH);
-				} else if (i == 1) {
-					name = "common";
-				} else {
-					name = String.format(Locale.ENGLISH, "extra-%d", i - 2);
-				}
+            if (i == 0) {
+                name = envType.name().toLowerCase(Locale.ENGLISH);
+            } else if (i == 1) {
+                name = "common";
+            } else {
+                name = String.format(Locale.ENGLISH, "extra-%d", i - 2);
+            }
 
-				obfJars.put(name, gameJars.get(i));
-				names[i] = name;
-			}
+            obfJars.put(name, gameJars.get(i));
+            names[i] = name;
+        }
 
-			if (realmsJar != null) {
-				obfJars.put("realms", realmsJar);
-			}
+        if (realmsJar != null) {
+            obfJars.put("realms", realmsJar);
+        }
 
-			for (Path obf : obfJars.values()) {
-				launcher.hideParentPath(obf);
-			}
+        for (Path obf : obfJars.values()) {
+            launcher.hideParentPath(obf);
+        }
 
 
-			for (int i = 0; i < gameJars.size(); i++) {
-				Path newJar = obfJars.get(names[i]);
-				Path oldJar = gameJars.set(i, newJar);
+        for (int i = 0; i < gameJars.size(); i++) {
+            Path newJar = obfJars.get(names[i]);
+            Path oldJar = gameJars.set(i, newJar);
 
-				if (logJars.remove(oldJar)) logJars.add(newJar);
-			}
+            if (logJars.remove(oldJar)) logJars.add(newJar);
+        }
 
-			realmsJar = obfJars.get("realms");
-		}
+        realmsJar = obfJars.get("realms");
 
-		if (!logJars.isEmpty() && !Boolean.getBoolean(SystemProperties.UNIT_TEST)) {
+        if (!logJars.isEmpty() && !Boolean.getBoolean(SystemProperties.UNIT_TEST)) {
 			for (Path jar : logJars) {
 				if (gameJars.contains(jar)) {
 					launcher.addToClassPath(jar, ALLOWED_EARLY_CLASS_PREFIXES);
@@ -497,11 +479,6 @@ public class MinecraftGameProvider implements GameProvider {
 	@Override
 	public void launch(ClassLoader loader) {
 		String targetClass = entrypoint;
-
-		if (envType == Environment.CLIENT && targetClass.contains("Applet")) {
-			Hooks.appletMainClass = targetClass;
-			targetClass = "org.quiltmc.loader.impl.game.minecraft.applet.AppletMain";
-		}
 
 		Log.debug(LogCategory.GAME_PROVIDER, "Launching using target class '" + targetClass + "'");
 
