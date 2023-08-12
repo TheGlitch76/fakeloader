@@ -42,14 +42,6 @@ public interface ModDependency {
 		 */
 		ModDependencyIdentifier id();
 
-		/** @return The {@link VersionRange} of this dependency, represented as a collection of the older
-		 *         {@link VersionConstraint} class.
-		 * @deprecated since {@link #versionRange()} exposes the same information correctly. */
-		@Deprecated
-		default Collection<VersionConstraint> versions() {
-			return versionRange().convertToConstraints();
-		}
-
 		/**
 		 * @return the VersionRange that this dependency requires.
 		 */

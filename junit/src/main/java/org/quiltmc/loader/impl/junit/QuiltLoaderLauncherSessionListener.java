@@ -1,6 +1,6 @@
 package org.quiltmc.loader.impl.junit;
 
-import net.fabricmc.api.EnvType;
+
 
 import org.junit.platform.launcher.LauncherSession;
 import org.junit.platform.launcher.LauncherSessionListener;
@@ -25,7 +25,7 @@ public class QuiltLoaderLauncherSessionListener implements LauncherSessionListen
 		final ClassLoader originalClassLoader = currentThread.getContextClassLoader();
 
 		try {
-			knot = new Knot(EnvType.valueOf(System.getProperty(SystemProperties.SIDE, EnvType.CLIENT.name().toUpperCase(Locale.ROOT))));
+			knot = new Knot(Environment.valueOf(System.getProperty(SystemProperties.SIDE, Environment.CLIENT.name().toUpperCase(Locale.ROOT))));
 			classLoader = knot.init(new String[]{});
 		} finally {
 			// Knot.init sets the context class loader, revert it back for now.

@@ -30,15 +30,13 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.spi.LoggerContext;
+import org.quiltmc.loader.api.VersionFormatException;
 import org.quiltmc.loader.impl.util.ManifestUtil;
 import org.quiltmc.loader.impl.util.log.Log;
 import org.quiltmc.loader.impl.util.log.LogCategory;
 import org.quiltmc.loader.impl.util.log.LogHandler;
 import org.quiltmc.loader.impl.util.log.LogLevel;
-
-import net.fabricmc.loader.api.Version;
-import net.fabricmc.loader.api.VersionParsingException;
-
+import org.quiltmc.loader.api.Version;
 public final class Log4jLogHandler implements LogHandler {
 	@Override
 	public boolean shouldLog(LogLevel level, LogCategory category) {
@@ -101,12 +99,7 @@ public final class Log4jLogHandler implements LogHandler {
 		String version = ManifestUtil.getManifestValue(manifest, Name.IMPLEMENTATION_VERSION);
 		if (version == null) return true;
 
-		try {
-			return Version.parse(version).compareTo(Version.parse("2.16")) < 0; // 2.15+ doesn't lookup by default, but we patch anything up to 2.16 just in case
-		} catch (VersionParsingException e) {
-			Log.warn(LogCategory.GAME_PROVIDER, "Can't parse Log4J2 Manifest version %s", version, e);
-			return true;
-		}
+		return Version.of(version).compareTo(Version.of("2.16")) < 0; // 2.15+ doesn't lookup by default, but we patch anything up to 2.16 just in case
 	}
 
 	private static void patchJndi() {

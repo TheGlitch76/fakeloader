@@ -40,7 +40,6 @@ import org.quiltmc.loader.api.QuiltLoader;
 import org.quiltmc.loader.api.plugin.solver.ModLoadOption;
 import org.quiltmc.loader.api.plugin.solver.ModSolveResult;
 import org.quiltmc.loader.impl.discovery.ModResolutionException;
-import org.quiltmc.loader.impl.discovery.RuntimeModRemapper;
 import org.quiltmc.loader.impl.filesystem.PartiallyWrittenIOException;
 import org.quiltmc.loader.impl.filesystem.QuiltMapFileSystem;
 import org.quiltmc.loader.impl.filesystem.QuiltUnifiedFileSystem;
@@ -303,9 +302,6 @@ public class TransformCache {
 
 	private static void populateTransformCache(Path root, List<ModLoadOption> modList, ModSolveResult solveResult)
 		throws ModResolutionException, IOException {
-
-		RuntimeModRemapper.remap(root, modList);
-
 		QuiltMapFileSystem.dumpEntries(root.getFileSystem(), "after-remap");
 
 		if (Boolean.getBoolean(SystemProperties.ENABLE_EXPERIMENTAL_CHASM)) {

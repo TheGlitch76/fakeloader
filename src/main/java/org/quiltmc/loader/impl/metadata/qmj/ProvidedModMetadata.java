@@ -24,16 +24,13 @@ import org.jetbrains.annotations.Nullable;
 import org.quiltmc.loader.api.LoaderValue;
 import org.quiltmc.loader.api.ModContributor;
 import org.quiltmc.loader.api.ModDependency;
+import org.quiltmc.loader.api.ModEnvironment;
 import org.quiltmc.loader.api.ModLicense;
 import org.quiltmc.loader.api.Version;
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.api.plugin.ModMetadataExt;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
-
-import net.fabricmc.loader.api.metadata.ModEnvironment;
-
-import net.fabricmc.api.EnvType;
-
 @QuiltLoaderInternal(QuiltLoaderInternalType.NEW_INTERNAL)
 public class ProvidedModMetadata implements ModMetadataExt {
 
@@ -61,7 +58,7 @@ public class ProvidedModMetadata implements ModMetadataExt {
 	}
 
 	@Override
-	public Collection<String> mixins(EnvType env) {
+	public Collection<String> mixins(Environment env) {
 		return metadata.mixins(env);
 	}
 

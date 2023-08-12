@@ -41,6 +41,7 @@ import org.quiltmc.loader.api.LoaderValue.LArray;
 import org.quiltmc.loader.api.LoaderValue.LType;
 import org.quiltmc.loader.api.ModDependency;
 import org.quiltmc.loader.api.ModDependencyIdentifier;
+import org.quiltmc.loader.api.ModEnvironment;
 import org.quiltmc.loader.api.ModLicense;
 import org.quiltmc.loader.api.QuiltLoader;
 import org.quiltmc.loader.api.Version;
@@ -56,7 +57,6 @@ import org.quiltmc.loader.impl.metadata.qmj.JsonLoaderValue.ObjectImpl;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 
-import net.fabricmc.loader.api.metadata.ModEnvironment;
 
 import org.quiltmc.loader.impl.util.SystemProperties;
 import org.quiltmc.loader.impl.util.log.Log;
@@ -403,7 +403,7 @@ public final class V1ModMetadataReader {
 						builder.env = ModEnvironment.CLIENT;
 						break;
 					case "dedicated_server":
-						builder.env = ModEnvironment.SERVER;
+						builder.env = ModEnvironment.DEDICATED_SERVER;
 						break;
 					case "":
 					case "*":

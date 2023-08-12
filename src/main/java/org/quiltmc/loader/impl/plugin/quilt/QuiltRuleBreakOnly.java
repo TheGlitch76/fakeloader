@@ -172,7 +172,7 @@ public class QuiltRuleBreakOnly extends QuiltRuleBreak {
 		errors.append(" on ");
 		errors.append(publicDep.id());
 		errors.append(" versions ");
-		errors.append(publicDep.versions());
+		errors.append(publicDep.versionRange());
 		errors.append(" (");
 		errors.append(conflictingOptions.size());
 		errors.append(" breaking options, ");

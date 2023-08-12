@@ -40,54 +40,6 @@ public final class EntrypointStorage {
 		ModContainerExt getModContainer();
 	}
 
-	@SuppressWarnings("deprecation")
-	private static class OldEntry implements Entry {
-		private static final net.fabricmc.loader.language.LanguageAdapter.Options options = net.fabricmc.loader.language.LanguageAdapter.Options.Builder.create()
-			.missingSuperclassBehaviour(net.fabricmc.loader.language.LanguageAdapter.MissingSuperclassBehavior.RETURN_NULL)
-			.build();
-
-		private final ModContainerExt mod;
-		private final String languageAdapter;
-		private final String value;
-		private Object object;
-
-		private OldEntry(ModContainerExt mod, String languageAdapter, String value) {
-			this.mod = mod;
-			this.languageAdapter = languageAdapter;
-			this.value = value;
-		}
-
-		@Override
-		public String toString() {
-			return mod.metadata().id() + "->" + value;
-		}
-
-		@SuppressWarnings({ "unchecked" })
-		@Override
-		public <T> T getOrCreate(Class<T> type) throws Exception {
-			if (object == null) {
-				net.fabricmc.loader.language.LanguageAdapter adapter = (net.fabricmc.loader.language.LanguageAdapter) Class.forName(languageAdapter, true, QuiltLauncherBase.getLauncher().getTargetClassLoader()).getConstructor().newInstance();
-				object = adapter.createInstance(value, options);
-			}
-
-			if (object == null || !type.isAssignableFrom(object.getClass())) {
-				return null;
-			} else {
-				return (T) object;
-			}
-		}
-
-		@Override
-		public boolean isOptional() {
-			return true;
-		}
-
-		@Override
-		public ModContainerExt getModContainer() {
-			return mod;
-		}
-	}
-
 	private static final class NewEntry implements Entry {
 		private final ModContainerExt mod;
 		private final LanguageAdapter adapter;
@@ -136,14 +88,6 @@ public final class EntrypointStorage {
 
 	private List<Entry> getOrCreateEntries(String key) {
 		return entryMap.computeIfAbsent(key, (z) -> new ArrayList<>());
-	}
-
-	public void addDeprecated(ModContainerExt modContainer, String adapter, String value) throws ClassNotFoundException, LanguageAdapterException {
-		Log.debug(LogCategory.ENTRYPOINT, "Registering 0.3.x old-style initializer %s for mod %s", value, modContainer.metadata().id());
-		OldEntry oe = new OldEntry(modContainer, adapter, value);
-		getOrCreateEntries("main").add(oe);
-		getOrCreateEntries("client").add(oe);
-		getOrCreateEntries("server").add(oe);
 	}
 
 	public void add(ModContainerExt modContainer, String key, AdapterLoadableClassEntry metadata, Map<String, LanguageAdapter> adapterMap) throws Exception {

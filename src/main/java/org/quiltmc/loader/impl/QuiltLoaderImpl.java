@@ -63,6 +63,7 @@ import org.quiltmc.loader.api.Version;
 import org.quiltmc.loader.api.entrypoint.EntrypointContainer;
 import org.quiltmc.loader.api.gui.LoaderGuiClosed;
 import org.quiltmc.loader.api.gui.QuiltLoaderText;
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.api.plugin.ModContainerExt;
 import org.quiltmc.loader.api.plugin.ModMetadataExt;
 import org.quiltmc.loader.api.plugin.gui.PluginGuiTreeNode.WarningLevel;
@@ -91,14 +92,12 @@ import org.quiltmc.loader.impl.launch.common.QuiltCodeSource;
 import org.quiltmc.loader.impl.launch.common.QuiltLauncher;
 import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
 import org.quiltmc.loader.impl.launch.common.QuiltMixinBootstrap;
-import org.quiltmc.loader.impl.metadata.FabricLoaderModMetadata;
 import org.quiltmc.loader.impl.metadata.qmj.AdapterLoadableClassEntry;
 import org.quiltmc.loader.impl.metadata.qmj.InternalModMetadata;
 import org.quiltmc.loader.impl.metadata.qmj.ProvidedModContainer;
 import org.quiltmc.loader.impl.metadata.qmj.ProvidedModMetadata;
 import org.quiltmc.loader.impl.patch.PatchLoader;
 import org.quiltmc.loader.impl.plugin.QuiltPluginManagerImpl;
-import org.quiltmc.loader.impl.plugin.fabric.FabricModOption;
 import org.quiltmc.loader.impl.report.QuiltReport.CrashReportSaveFailed;
 import org.quiltmc.loader.impl.report.QuiltReportedError;
 import org.quiltmc.loader.impl.solver.ModSolveResultImpl;
@@ -118,11 +117,8 @@ import org.quiltmc.loader.impl.util.log.Log;
 import org.quiltmc.loader.impl.util.log.LogCategory;
 import org.spongepowered.asm.mixin.FabricUtil;
 
-import net.fabricmc.loader.api.ObjectShare;
-
 import net.fabricmc.accesswidener.AccessWidener;
 import net.fabricmc.accesswidener.AccessWidenerReader;
-import net.fabricmc.api.EnvType;
 
 @QuiltLoaderInternal(value = QuiltLoaderInternalType.LEGACY_EXPOSED, replacements = QuiltLoader.class)
 public final class QuiltLoaderImpl {
@@ -153,8 +149,6 @@ public final class QuiltLoaderImpl {
 	private final EntrypointStorage entrypointStorage = new EntrypointStorage();
 	private final AccessWidener accessWidener = new AccessWidener();
 
-	private final ObjectShare objectShare = new ObjectShareImpl();
-
 	private boolean frozen = false;
 
 	private Object gameInstance;
@@ -168,8 +162,6 @@ public final class QuiltLoaderImpl {
 	private Path configDir;
 	private Path modsDir;
 
-	/** Stores every mod which has been copied into a temporary jar file: see {@link #shouldCopyToJar(ModLoadOption)}
-	 * and {@link #copyToJar(ModLoadOption, Path)}. */
 	private final Map<String, File> copiedToJarMods = new HashMap<>();
 
 	/** Stores the result from running plugins. This is useful if we crash after selecting which mods to load, but
@@ -208,8 +200,6 @@ public final class QuiltLoaderImpl {
 
 		setGameDir(provider.getLaunchDirectory());
 		argumentModsList = provider.getArguments().remove(Arguments.ADD_MODS);
-
-		ActiveUserBeacon.run();
 	}
 
 	public void setGameDir(Path gameDir) {
@@ -234,7 +224,7 @@ public final class QuiltLoaderImpl {
 		return gameInstance;
 	}
 
-	public EnvType getEnvironmentType() {
+	public Environment getEnvironmentType() {
 		return QuiltLauncherBase.getLauncher().getEnvironmentType();
 	}
 
@@ -883,20 +873,6 @@ public final class QuiltLoaderImpl {
 	}
 
 	private static void performMixinReordering(List<ModLoadOption> modList) {
-
-		// Keep Mixin 0.9.2 compatible mods first in the load order, temporary fix for https://github.com/FabricMC/Mixin/issues/89
-		List<ModLoadOption> newMixinCompatMods = new ArrayList<>();
-
-		for (Iterator<ModLoadOption> it = modList.iterator(); it.hasNext();) {
-			ModLoadOption mod = it.next();
-			boolean isFabric = mod instanceof FabricModOption;
-			if (QuiltMixinBootstrap.MixinConfigDecorator.getMixinCompat(isFabric, mod.metadata()) != FabricUtil.COMPATIBILITY_0_9_2) {
-				it.remove();
-				newMixinCompatMods.add(mod);
-			}
-		}
-
-		modList.addAll(newMixinCompatMods);
 	}
 
 	private static void performLoadLateReordering(List<ModLoadOption> modList) {
@@ -1001,17 +977,6 @@ public final class QuiltLoaderImpl {
 		return entrypointStorage.getEntrypointContainers(key, type);
 	}
 
-	public MappingResolver getMappingResolver() {
-		if (mappingResolver == null) {
-			mappingResolver = new QuiltMappingResolver(
-				QuiltLauncherBase.getLauncher().getMappingConfiguration()::getMappings,
-				QuiltLauncherBase.getLauncher().getTargetNamespace()
-			);
-		}
-
-		return mappingResolver;
-	}
-
 	public Optional<org.quiltmc.loader.api.ModContainer> getModContainer(String id) {
 		return Optional.ofNullable(modMap.get(id));
 	}
@@ -1025,11 +990,6 @@ public final class QuiltLoaderImpl {
 			}
 		}
 		return Optional.empty();
-	}
-
-	// TODO: add to QuiltLoader api
-	public ObjectShare getObjectShare() {
-		return objectShare;
 	}
 
 	public Collection<org.quiltmc.loader.api.ModContainer> getAllMods() {
@@ -1100,14 +1060,6 @@ public final class QuiltLoaderImpl {
 	private void setupMods() {
 		for (ModContainerExt mod : mods) {
 			try {
-				if (mod.getSourceType() == BasicSourceType.NORMAL_FABRIC) {
-					FabricLoaderModMetadata fabricMeta = ((InternalModMetadata) mod.metadata()).asFabricModMetadata(mod);
-					for (String in : fabricMeta.getOldInitializers()) {
-						String adapter = fabricMeta.getOldStyleLanguageAdapter();
-						entrypointStorage.addDeprecated(mod, adapter, in);
-					}
-				}
-
 				for (Map.Entry<String, Collection<AdapterLoadableClassEntry>> entry : mod.metadata().getEntrypoints().entrySet()) {
 					for (AdapterLoadableClassEntry e : entry.getValue()) {
 						entrypointStorage.add(mod, entry.getKey(), e, adapterMap);
@@ -1132,7 +1084,7 @@ public final class QuiltLoaderImpl {
 				}
 
 				try (BufferedReader reader = Files.newBufferedReader(path)) {
-					accessWidenerReader.read(reader, getMappingResolver().getCurrentRuntimeNamespace());
+					accessWidenerReader.read(reader, "mojmap");
 				} catch (Exception e) {
 					throw new RuntimeException("Failed to read accessWidener file from mod " + mod.metadata().id(), e);
 				}
@@ -1169,7 +1121,6 @@ public final class QuiltLoaderImpl {
 	public void invokePreLaunch() {
 		try {
 			EntrypointUtils.invoke("pre_launch", org.quiltmc.loader.api.entrypoint.PreLaunchEntrypoint.class, org.quiltmc.loader.api.entrypoint.PreLaunchEntrypoint::onPreLaunch);
-			EntrypointUtils.invoke("preLaunch", net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint.class, net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint::onPreLaunch);
 		} catch (RuntimeException e) {
 			throw new FormattedException("A mod crashed on startup!", e);
 		}
@@ -1184,7 +1135,7 @@ public final class QuiltLoaderImpl {
 	 */
 	@Deprecated
 	public void setGameInstance(Object gameInstance) {
-		if (this.getEnvironmentType() != EnvType.SERVER) {
+		if (this.getEnvironmentType() != Environment.DEDICATED_SERVER) {
 			throw new UnsupportedOperationException("Cannot set game instance on a client!");
 		}
 

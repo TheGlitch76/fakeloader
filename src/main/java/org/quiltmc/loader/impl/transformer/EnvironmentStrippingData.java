@@ -28,28 +28,19 @@ import org.objectweb.asm.TypePath;
 import org.objectweb.asm.TypeReference;
 import org.quiltmc.loader.api.minecraft.ClientOnly;
 import org.quiltmc.loader.api.minecraft.DedicatedServerOnly;
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
-
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
-import net.fabricmc.api.EnvironmentInterface;
-import net.fabricmc.api.EnvironmentInterfaces;
 
 /** Scans a class for Environment and EnvironmentInterface annotations to figure out what needs to be stripped. */
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_EXPOSED)
 public class EnvironmentStrippingData extends ClassVisitor {
-	// Fabric annotations
-	private static final String ENVIRONMENT_DESCRIPTOR = Type.getDescriptor(Environment.class);
-	private static final String ENVIRONMENT_INTERFACE_DESCRIPTOR = Type.getDescriptor(EnvironmentInterface.class);
-	private static final String ENVIRONMENT_INTERFACES_DESCRIPTOR = Type.getDescriptor(EnvironmentInterfaces.class);
-
 	// Quilt annotations
 	private static final String CLIENT_ONLY_DESCRIPTOR = Type.getDescriptor(ClientOnly.class);
 	private static final String SERVER_ONLY_DESCRIPTOR = Type.getDescriptor(DedicatedServerOnly.class);
 
-	private final EnvType envType;
-	private final String envTypeString;
+	private final Environment environment;
+	private final String EnvironmentString;
 
 	private boolean stripEntireClass = false;
 	private String[] interfaces;
@@ -70,7 +61,7 @@ public class EnvironmentStrippingData extends ClassVisitor {
 
 		@Override
 		public void visitEnum(String name, String descriptor, String value) {
-			if ("value".equals(name) && !envTypeString.equals(value)) {
+			if ("value".equals(name) && !EnvironmentString.equals(value)) {
 				onEnvMismatch.run();
 			}
 		}
@@ -104,57 +95,24 @@ public class EnvironmentStrippingData extends ClassVisitor {
 		}
 	}
 
-	private class FabricEnvironmentInterfaceAnnotationVisitor extends AnnotationVisitor {
-		private boolean envMismatch;
-		private Type itf;
-
-		private FabricEnvironmentInterfaceAnnotationVisitor(int api) {
-			super(api);
-		}
-
-		@Override
-		public void visitEnum(String name, String descriptor, String value) {
-			if ("value".equals(name) && !envTypeString.equals(value)) {
-				envMismatch = true;
-			}
-		}
-
-		@Override
-		public void visit(String name, Object value) {
-			if ("itf".equals(name)) {
-				itf = (Type) value;
-			}
-		}
-
-		@Override
-		public void visitEnd() {
-			if (envMismatch) {
-				stripInterfaces.add(itf.getInternalName());
-			}
-		}
-	}
 
 	private AnnotationVisitor visitMemberAnnotation(String descriptor, boolean visible, Runnable onEnvMismatch,
 		Runnable onEnvMismatchLambdas) {
-		if (ENVIRONMENT_DESCRIPTOR.equals(descriptor)) {
-			return new FabricEnvironmentAnnotationVisitor(api, onEnvMismatch);
-		}
-
-		if (CLIENT_ONLY_DESCRIPTOR.equals(descriptor) && envType == EnvType.SERVER) {
+		if (CLIENT_ONLY_DESCRIPTOR.equals(descriptor) && environment == Environment.DEDICATED_SERVER) {
 			return new QuiltEnvironmentAnnotationVisitor(api, onEnvMismatch, onEnvMismatchLambdas);
 		}
 
-		if (SERVER_ONLY_DESCRIPTOR.equals(descriptor) && envType == EnvType.CLIENT) {
+		if (SERVER_ONLY_DESCRIPTOR.equals(descriptor) && environment == Environment.CLIENT) {
 			return new QuiltEnvironmentAnnotationVisitor(api, onEnvMismatch, onEnvMismatchLambdas);
 		}
 
 		return null;
 	}
 
-	public EnvironmentStrippingData(int api, EnvType envType) {
+	public EnvironmentStrippingData(int api, Environment Environment) {
 		super(api);
-		this.envType = envType;
-		this.envTypeString = envType.name();
+		this.environment = Environment;
+		this.EnvironmentString = Environment.name();
 	}
 
 	@Override
@@ -165,33 +123,13 @@ public class EnvironmentStrippingData extends ClassVisitor {
 	@Override
 	public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
 		if (CLIENT_ONLY_DESCRIPTOR.equals(descriptor)) {
-			if (envType == EnvType.SERVER) {
+			if (environment == Environment.DEDICATED_SERVER) {
 				stripEntireClass = true;
 			}
 		} else if (SERVER_ONLY_DESCRIPTOR.equals(descriptor)) {
-			if (envType == EnvType.CLIENT) {
+			if (environment == Environment.CLIENT) {
 				stripEntireClass = true;
 			}
-		} else if (ENVIRONMENT_DESCRIPTOR.equals(descriptor)) {
-			return new FabricEnvironmentAnnotationVisitor(api, () -> stripEntireClass = true);
-		} else if (ENVIRONMENT_INTERFACE_DESCRIPTOR.equals(descriptor)) {
-			return new FabricEnvironmentInterfaceAnnotationVisitor(api);
-		} else if (ENVIRONMENT_INTERFACES_DESCRIPTOR.equals(descriptor)) {
-			return new AnnotationVisitor(api) {
-				@Override
-				public AnnotationVisitor visitArray(String name) {
-					if ("value".equals(name)) {
-						return new AnnotationVisitor(api) {
-							@Override
-							public AnnotationVisitor visitAnnotation(String name, String descriptor) {
-								return new FabricEnvironmentInterfaceAnnotationVisitor(api);
-							}
-						};
-					}
-
-					return null;
-				}
-			};
 		}
 
 		return null;
@@ -213,17 +151,17 @@ public class EnvironmentStrippingData extends ClassVisitor {
 			return null;
 		}
 
-		final EnvType annotationEnv;
+		final Environment annotationEnv;
 
 		if (CLIENT_ONLY_DESCRIPTOR.equals(descriptor)) {
-			annotationEnv = EnvType.CLIENT;
+			annotationEnv = Environment.CLIENT;
 		} else if (SERVER_ONLY_DESCRIPTOR.equals(descriptor)) {
-			annotationEnv = EnvType.SERVER;
+			annotationEnv = Environment.DEDICATED_SERVER;
 		} else {
 			return null;
 		}
 
-		if (annotationEnv != envType) {
+		if (annotationEnv != environment) {
 			stripInterfaces.add(interfaces[interfaceIdx]);
 		}
 

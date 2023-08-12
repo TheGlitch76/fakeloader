@@ -17,14 +17,15 @@
 
 package org.quiltmc.loader.impl.launch.knot;
 
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 
-import net.fabricmc.api.EnvType;
+
 
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_NO_WARN)
 public class KnotClient {
 	public static void main(String[] args) {
-		Knot.launch(args, EnvType.CLIENT);
+		Knot.launch(args, Environment.CLIENT);
 	}
 }

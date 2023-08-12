@@ -16,13 +16,12 @@
 
 package org.quiltmc.loader.impl.game.minecraft;
 
-import net.fabricmc.loader.api.SemanticVersion;
-import net.fabricmc.loader.api.VersionParsingException;
+import java.util.OptionalInt;
 
+import org.quiltmc.loader.api.Version;
+import org.quiltmc.loader.api.VersionFormatException;
 import org.quiltmc.loader.impl.util.log.Log;
 import org.quiltmc.loader.impl.util.log.LogCategory;
-
-import java.util.OptionalInt;
 
 public final class McVersion {
 	/**
@@ -56,8 +55,8 @@ public final class McVersion {
 		String normalized = McVersionLookup.normalizeVersion(raw, release);
 
 		try {
-			SemanticVersion.parse(normalized);
-		} catch (VersionParsingException e) {
+			Version.Semantic.of(normalized);
+		} catch (VersionFormatException e) {
 			Log.error(LogCategory.GAME_PROVIDER, "UNABLE TO NORMALIZE MINECRAFT VERSION " + raw + " OF RELEASE " + release + "! THIS MUST BE FIXED IN LOADER!");
 			normalized = "UNKNOWN." + raw;
 		}

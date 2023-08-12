@@ -30,11 +30,8 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.quiltmc.loader.api.Version;
-import org.quiltmc.loader.api.VersionConstraint;
-import org.quiltmc.loader.api.VersionConstraint.Type;
 import org.quiltmc.loader.api.VersionInterval;
 import org.quiltmc.loader.api.VersionRange;
-import org.quiltmc.loader.impl.metadata.qmj.VersionConstraintImpl;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 
@@ -146,50 +143,6 @@ public class VersionRangeImpl extends AbstractSet<VersionInterval> implements Ve
 			}
 		}
 		return new VersionRangeImpl(combined);
-	}
-
-	@Override
-	@Deprecated
-	public Collection<VersionConstraint> convertToConstraints() {
-		List<VersionConstraint> constraints = new ArrayList<>();
-		for (VersionInterval interval : this) {
-			Version min = interval.getMin();
-			boolean minInclusive = interval.isMaxInclusive();
-			Version max = interval.getMax();
-			boolean maxInclusive = interval.isMaxInclusive();
-			if (min == null && max == null) {
-				constraints.add(VersionConstraint.any());
-				continue;
-			}
-
-			if (Objects.equals(min, max) && maxInclusive && minInclusive) {
-				constraints.add(new VersionConstraintImpl(min, VersionConstraint.Type.EQUALS));
-				continue;
-			}
-
-			VersionConstraint.Type maxBound = maxInclusive
-				? VersionConstraint.Type.LESSER_THAN_OR_EQUAL
-				: VersionConstraint.Type.LESSER_THAN;
-
-			if (min == null) {
-				constraints.add(new VersionConstraintImpl(max, maxBound));
-				continue;
-			}
-
-			VersionConstraint.Type minBound = minInclusive
-				? VersionConstraint.Type.GREATER_THAN_OR_EQUAL
-				: VersionConstraint.Type.GREATER_THAN;
-
-			if (max == null) {
-				constraints.add(new VersionConstraintImpl(min, minBound));
-				continue;
-			}
-
-			// TODO: Check for the major/minor types!
-			constraints.add(new VersionConstraintImpl(min, minBound));
-			constraints.add(new VersionConstraintImpl(max, maxBound));
-		}
-		return constraints;
 	}
 
 	@Override

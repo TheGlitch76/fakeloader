@@ -32,7 +32,7 @@ import org.quiltmc.loader.impl.transformer.ClassStripper;
 import org.quiltmc.loader.impl.transformer.EnvironmentStrippingData;
 import org.quiltmc.loader.impl.transformer.LambdaStripCalculator;
 
-import net.fabricmc.api.EnvType;
+
 
 public class LambdaStripTester {
 
@@ -63,7 +63,7 @@ public class LambdaStripTester {
 					| ClassReader.SKIP_FRAMES
 			);
 
-			EnvironmentStrippingData stripData = new EnvironmentStrippingData(Opcodes.ASM9, EnvType.SERVER);
+			EnvironmentStrippingData stripData = new EnvironmentStrippingData(Opcodes.ASM9, Environment.DEDICATED_SERVER);
 			reader.accept(stripData, ClassReader.SKIP_CODE | ClassReader.SKIP_FRAMES);
 
 			Collection<String> stripMethods = stripData.getStripMethods();

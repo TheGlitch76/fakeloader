@@ -17,48 +17,28 @@
 
 package org.quiltmc.loader.impl.game;
 
-import net.fabricmc.api.EnvType;
-
-import org.quiltmc.loader.impl.util.LoaderUtil;
-import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
-import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
-
-import net.fabricmc.mapping.tree.TinyTree;
-
-import net.fabricmc.tinyremapper.InputTag;
-import net.fabricmc.tinyremapper.NonClassCopyMode;
-import net.fabricmc.tinyremapper.OutputConsumerPath;
-import net.fabricmc.tinyremapper.TinyRemapper;
-
-import org.quiltmc.loader.impl.FormattedException;
-import org.quiltmc.loader.impl.QuiltLoaderImpl;
-import org.quiltmc.loader.impl.launch.common.QuiltLauncher;
-import org.quiltmc.loader.impl.launch.common.MappingConfiguration;
-import org.quiltmc.loader.impl.util.SystemProperties;
-import org.quiltmc.loader.impl.util.UrlConversionException;
-import org.quiltmc.loader.impl.util.UrlUtil;
-import org.quiltmc.loader.impl.util.log.Log;
-import org.quiltmc.loader.impl.util.log.LogCategory;
-import org.quiltmc.loader.impl.util.mappings.TinyRemapperMappingsHelper;
 
 import java.io.IOException;
-import java.net.URI;
 import java.net.URL;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.jar.JarFile;
 import java.util.zip.ZipFile;
+
+import org.quiltmc.loader.api.minecraft.Environment;
+import org.quiltmc.loader.impl.QuiltLoaderImpl;
+import org.quiltmc.loader.impl.util.LoaderUtil;
+import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
+import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
+import org.quiltmc.loader.impl.util.SystemProperties;
+import org.quiltmc.loader.impl.util.UrlConversionException;
+import org.quiltmc.loader.impl.util.UrlUtil;
 
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_NO_WARN)
 public final class GameProviderHelper {
@@ -68,8 +48,8 @@ public final class GameProviderHelper {
 		return getGameJar(SystemProperties.GAME_JAR_PATH);
 	}
 
-	public static Path getEnvGameJar(EnvType env) {
-		return getGameJar(env == EnvType.CLIENT ? SystemProperties.GAME_JAR_PATH_CLIENT : SystemProperties.GAME_JAR_PATH_SERVER);
+	public static Path getEnvGameJar(Environment env) {
+		return getGameJar(env == Environment.CLIENT ? SystemProperties.GAME_JAR_PATH_CLIENT : SystemProperties.GAME_JAR_PATH_SERVER);
 	}
 
 	private static Path getGameJar(String property) {
@@ -164,93 +144,7 @@ public final class GameProviderHelper {
 
 	private static boolean emittedInfo = false;
 
-	public static Map<String, Path> deobfuscate(Map<String, Path> inputFileMap, String gameId, String gameVersion, Path gameDir, QuiltLauncher launcher) {
-		Log.debug(LogCategory.GAME_REMAP, "Requesting deobfuscation of %s", inputFileMap);
 
-		if (launcher.isDevelopment()) { // in-dev is already deobfuscated
-			return inputFileMap;
-		}
-
-		MappingConfiguration mappingConfig = launcher.getMappingConfiguration();
-
-		if (!mappingConfig.matches(gameId, gameVersion)) {
-			String mappingsGameId = mappingConfig.getGameId();
-			String mappingsGameVersion = mappingConfig.getGameVersion();
-
-			throw new FormattedException("Incompatible mappings",
-					String.format("Supplied mappings for %s %s are incompatible with %s %s, this is likely caused by launcher misbehavior",
-							(mappingsGameId != null ? mappingsGameId : "(unknown)"),
-							(mappingsGameVersion != null ? mappingsGameVersion : "(unknown)"),
-							gameId,
-							gameVersion));
-		}
-
-		String targetNamespace = mappingConfig.getTargetNamespace();
-		TinyTree mappings = mappingConfig.getMappings();
-
-		if (mappings == null
-				|| !mappings.getMetadata().getNamespaces().contains(targetNamespace)) {
-			Log.debug(LogCategory.GAME_REMAP, "No mappings, using input files");
-			return inputFileMap;
-		}
-
-		Path deobfJarDir = getDeobfJarDir(gameDir, gameId, gameVersion);
-		List<Path> inputFiles = new ArrayList<>(inputFileMap.size());
-		List<Path> outputFiles = new ArrayList<>(inputFileMap.size());
-		List<Path> tmpFiles = new ArrayList<>(inputFileMap.size());
-		Map<String, Path> ret = new HashMap<>(inputFileMap.size());
-		boolean anyMissing = false;
-
-		for (Map.Entry<String, Path> entry : inputFileMap.entrySet()) {
-			String name = entry.getKey();
-			Path inputFile = entry.getValue();
-			// TODO: allow versioning mappings?
-			String deobfJarFilename = String.format("%s-%s.jar", name, targetNamespace);
-			Path outputFile = deobfJarDir.resolve(deobfJarFilename);
-			Path tmpFile = deobfJarDir.resolve(deobfJarFilename + ".tmp");
-
-			if (Files.exists(tmpFile)) { // previous unfinished remap attempt
-				Log.warn(LogCategory.GAME_REMAP, "Incomplete remapped file found! This means that the remapping process failed on the previous launch. If this persists, make sure to let us at Quilt know!");
-
-				try {
-					Files.deleteIfExists(outputFile);
-					Files.deleteIfExists(tmpFile);
-				} catch (IOException e) {
-					throw new RuntimeException("can't delete incompletely remapped files", e);
-				}
-			}
-
-			inputFiles.add(inputFile);
-			outputFiles.add(outputFile);
-			tmpFiles.add(tmpFile);
-			ret.put(name, outputFile);
-
-			if (!anyMissing && !Files.exists(outputFile)) {
-				anyMissing = true;
-			}
-		}
-
-		if (!anyMissing) {
-			Log.debug(LogCategory.GAME_REMAP, "Remapped files exist already, reusing them");
-			return ret;
-		}
-
-		Log.debug(LogCategory.GAME_REMAP, "Mapping file detected, applying...");
-
-		if (!emittedInfo) {
-			Log.info(LogCategory.GAME_REMAP, "Preparing JARs on first launch, this may take a few seconds...");
-			emittedInfo = true;
-		}
-
-		try {
-			Files.createDirectories(deobfJarDir);
-			deobfuscate0(inputFiles, outputFiles, tmpFiles, mappings, targetNamespace, launcher);
-		} catch (IOException e) {
-			throw new RuntimeException("error remapping game jars "+inputFiles, e);
-		}
-
-		return ret;
-	}
 
 	private static Path getDeobfJarDir(Path gameDir, String gameId, String gameVersion) {
 		QuiltLoaderImpl loader = QuiltLoaderImpl.INSTANCE;
@@ -273,99 +167,5 @@ public final class GameProviderHelper {
 		versionDirName.append(QuiltLoaderImpl.VERSION);
 
 		return ret.resolve(versionDirName.toString().replaceAll("[^\\w\\-\\. ]+", "_"));
-	}
-
-	private static void deobfuscate0(List<Path> inputFiles, List<Path> outputFiles, List<Path> tmpFiles, TinyTree mappings, String targetNamespace, QuiltLauncher launcher) throws IOException {
-		TinyRemapper remapper = TinyRemapper.newRemapper()
-				.withMappings(TinyRemapperMappingsHelper.create(mappings, "official", targetNamespace))
-				.rebuildSourceFilenames(true)
-				.build();
-
-		Set<Path> depPaths = new HashSet<>();
-
-		for (Path path : launcher.getClassPath()) {
-			if (!inputFiles.contains(path)) {
-				depPaths.add(path);
-
-				Log.debug(LogCategory.GAME_REMAP, "Appending '%s' to remapper classpath", path);
-				remapper.readClassPathAsync(path);
-			}
-		}
-
-		List<OutputConsumerPath> outputConsumers = new ArrayList<>(inputFiles.size());
-		List<InputTag> inputTags = new ArrayList<>(inputFiles.size());
-
-		try {
-			for (int i = 0; i < inputFiles.size(); i++) {
-				Path inputFile = inputFiles.get(i);
-				Path tmpFile = tmpFiles.get(i);
-
-				InputTag inputTag = remapper.createInputTag();
-				OutputConsumerPath outputConsumer = new OutputConsumerPath.Builder(tmpFile)
-						// force jar despite the .tmp extension
-						.assumeArchive(true)
-						.build();
-
-				outputConsumers.add(outputConsumer);
-				inputTags.add(inputTag);
-
-				outputConsumer.addNonClassFiles(inputFile, NonClassCopyMode.FIX_META_INF, remapper);
-				remapper.readInputsAsync(inputTag, inputFile);
-			}
-
-			for (int i = 0; i < inputFiles.size(); i++) {
-				remapper.apply(outputConsumers.get(i), inputTags.get(i));
-			}
-		} finally {
-			for (OutputConsumerPath outputConsumer : outputConsumers) {
-				outputConsumer.close();
-			}
-
-			remapper.finish();
-		}
-
-		// Minecraft doesn't tend to check if a ZipFileSystem is already present,
-		// so we clean up here.
-
-		depPaths.addAll(tmpFiles);
-
-		for (Path p : depPaths) {
-			try {
-				p.getFileSystem().close();
-			} catch (Exception e) {
-				// pass
-			}
-
-			try {
-				FileSystems.getFileSystem(new URI("jar:" + p.toUri())).close();
-			} catch (Exception e) {
-				// pass
-			}
-		}
-
-		List<Path> missing = new ArrayList<>();
-
-		for (int i = 0; i < inputFiles.size(); i++) {
-			Path inputFile = inputFiles.get(i);
-			Path tmpFile = tmpFiles.get(i);
-			Path outputFile = outputFiles.get(i);
-
-			boolean found;
-
-			try (JarFile jar = new JarFile(tmpFile.toFile())) {
-				found = jar.stream().anyMatch((e) -> e.getName().endsWith(".class"));
-			}
-
-			if (!found) {
-				missing.add(inputFile);
-				Files.delete(tmpFile);
-			} else {
-				Files.move(tmpFile, outputFile);
-			}
-		}
-
-		if (!missing.isEmpty()) {
-			throw new RuntimeException("Generated deobfuscated JARs contain no classes: "+missing);
-		}
 	}
 }

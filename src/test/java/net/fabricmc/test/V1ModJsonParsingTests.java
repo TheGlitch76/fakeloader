@@ -39,7 +39,6 @@ import net.fabricmc.loader.api.metadata.CustomValue;
 
 import org.quiltmc.loader.impl.fabric.metadata.FabricModMetadataReader;
 import org.quiltmc.loader.impl.fabric.metadata.ParseMetadataException;
-import org.quiltmc.loader.impl.metadata.FabricLoaderModMetadata;
 
 @Disabled // TODO needs fixing.
 final class V1ModJsonParsingTests {

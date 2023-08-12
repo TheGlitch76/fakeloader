@@ -21,10 +21,9 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Type;
 import org.quiltmc.loader.api.minecraft.ClientOnly;
 import org.quiltmc.loader.api.minecraft.DedicatedServerOnly;
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
-
-import net.fabricmc.api.EnvType;
 
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_EXPOSED)
 public class PackageEnvironmentStrippingData extends ClassVisitor {
@@ -32,22 +31,22 @@ public class PackageEnvironmentStrippingData extends ClassVisitor {
 	private static final String CLIENT_ONLY_DESCRIPTOR = Type.getDescriptor(ClientOnly.class);
 	private static final String SERVER_ONLY_DESCRIPTOR = Type.getDescriptor(DedicatedServerOnly.class);
 
-	private final EnvType envType;
+	private final Environment environment;
 	public boolean stripEntirePackage = false;
 
-	public PackageEnvironmentStrippingData(int api, EnvType envType) {
+	public PackageEnvironmentStrippingData(int api, Environment environment) {
 		super(api);
-		this.envType = envType;
+		this.environment = environment;
 	}
 
 	@Override
 	public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
 		if (CLIENT_ONLY_DESCRIPTOR.equals(descriptor)) {
-			if (envType == EnvType.SERVER) {
+			if (environment == Environment.DEDICATED_SERVER) {
 				stripEntirePackage = true;
 			}
 		} else if (SERVER_ONLY_DESCRIPTOR.equals(descriptor)) {
-			if (envType == EnvType.CLIENT) {
+			if (environment == Environment.CLIENT) {
 				stripEntirePackage = true;
 			}
 		}

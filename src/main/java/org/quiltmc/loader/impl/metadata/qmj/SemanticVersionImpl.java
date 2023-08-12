@@ -27,9 +27,6 @@ import org.quiltmc.loader.api.VersionFormatException;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 
-import net.fabricmc.loader.api.SemanticVersion;
-import net.fabricmc.loader.api.VersionParsingException;
-
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_EXPOSED)
 public class SemanticVersionImpl implements Version.Semantic {
 	private final String raw;
@@ -101,9 +98,9 @@ public class SemanticVersionImpl implements Version.Semantic {
 
 			try {
 				if (permitWildcard && ("x".equalsIgnoreCase(compStr) || "*".equals(compStr))) {
-					components[i] = SemanticVersion.COMPONENT_WILDCARD;
+					components[i] = Integer.MIN_VALUE;
 					if (i != components.length - 1) {
-						if (components[i + 1] == SemanticVersion.COMPONENT_WILDCARD) {
+						if (components[i + 1] == Integer.MIN_VALUE) {
 							// We have ?.?.x.x
 							// remove the last ".x" since it's unnecessary
 							components = Arrays.copyOf(components, components.length - 1);

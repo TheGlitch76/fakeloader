@@ -85,8 +85,6 @@ public interface ModContainer {
 	public enum BasicSourceType {
 		/** A regular quilt mod, likely loaded from a mod jar file, but could be from the classpath instead. */
 		NORMAL_QUILT,
-		/** A regular fabric mod, likely loaded from a mod jar file, but could be from the classpath instead. */
-		NORMAL_FABRIC,
 		/** A "mod" that only exists to expose some internal library or game itself - for example quilt loader,
 		 * minecraft, and java all get exposed as BUILTINs. */
 		BUILTIN,

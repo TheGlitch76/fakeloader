@@ -25,6 +25,7 @@ import java.util.Map;
 import org.jetbrains.annotations.Nullable;
 import org.quiltmc.loader.api.ModContributor;
 import org.quiltmc.loader.api.ModDependency;
+import org.quiltmc.loader.api.ModEnvironment;
 import org.quiltmc.loader.api.ModLicense;
 import org.quiltmc.loader.api.ModMetadata.ProvidedMod;
 import org.quiltmc.loader.api.Version;
@@ -32,8 +33,6 @@ import org.quiltmc.loader.api.plugin.ModMetadataExt.ModLoadType;
 import org.quiltmc.loader.impl.metadata.qmj.JsonLoaderValue.ObjectImpl;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
-
-import net.fabricmc.loader.api.metadata.ModEnvironment;
 
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_EXPOSED)
 public class V1ModMetadataBuilder {

@@ -16,8 +16,6 @@
 
 package org.quiltmc.loader.impl.launch.common;
 
-import net.fabricmc.api.EnvType;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -27,12 +25,12 @@ import java.util.List;
 import java.util.jar.Manifest;
 
 import org.quiltmc.loader.api.ModContainer;
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_EXPOSED)
 public interface QuiltLauncher {
-	MappingConfiguration getMappingConfiguration();
 
 	void addToClassPath(Path path, String... allowedPrefixes);
 	void addToClassPath(Path path, ModContainer mod, URL origin, String... allowedPrefixes);
@@ -42,7 +40,7 @@ public interface QuiltLauncher {
 	void hideParentPath(Path obf);
 	void validateGameClassLoader(Object gameInstance);
 
-	EnvType getEnvironmentType();
+	Environment getEnvironmentType();
 
 	boolean isClassLoaded(String name);
 

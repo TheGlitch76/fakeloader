@@ -37,6 +37,7 @@ import org.quiltmc.loader.api.ModDependency;
 import org.quiltmc.loader.api.ModDependencyIdentifier;
 import org.quiltmc.loader.api.Version;
 import org.quiltmc.loader.api.VersionRange;
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.impl.FormattedException;
 import org.quiltmc.loader.impl.QuiltLoaderImpl;
 import org.quiltmc.loader.impl.entrypoint.GameTransformer;
@@ -55,10 +56,6 @@ import org.quiltmc.loader.impl.util.log.Log;
 import org.quiltmc.loader.impl.util.log.LogCategory;
 import org.quiltmc.loader.impl.util.log.LogHandler;
 
-import net.fabricmc.loader.api.ObjectShare;
-
-import net.fabricmc.api.EnvType;
-
 public class MinecraftGameProvider implements GameProvider {
 	private static final String[] ALLOWED_EARLY_CLASS_PREFIXES = { "org.apache.logging.log4j.", "com.mojang.util." };
 
@@ -74,7 +71,7 @@ public class MinecraftGameProvider implements GameProvider {
 			"uuid",
 			"xuid"));
 
-	private EnvType envType;
+	private Environment envType;
 	private String entrypoint;
 	private Arguments arguments;
 	private final List<Path> gameJars = new ArrayList<>(2); // env game jar and common game jar, potentially
@@ -202,7 +199,7 @@ public class MinecraftGameProvider implements GameProvider {
 
 		try {
 			LibClassifier<McLibrary> classifier = new LibClassifier<>(McLibrary.class, envType, this);
-			McLibrary envGameLib = envType == EnvType.CLIENT ? McLibrary.MC_CLIENT : McLibrary.MC_SERVER;
+			McLibrary envGameLib = envType == Environment.CLIENT ? McLibrary.MC_CLIENT : McLibrary.MC_SERVER;
 			Path commonGameJar = GameProviderHelper.getCommonGameJar();
 			Path envGameJar = GameProviderHelper.getEnvGameJar(envType);
 			boolean commonGameJarDeclared = commonGameJar != null;
@@ -291,12 +288,6 @@ public class MinecraftGameProvider implements GameProvider {
 			throw ExceptionUtil.wrap(e);
 		}
 
-		// expose obfuscated jar locations for mods to more easily remap code from obfuscated to intermediary
-		ObjectShare share = QuiltLoaderImpl.INSTANCE.getObjectShare();
-		share.put("fabric-loader:inputGameJar", gameJars.get(0)); // deprecated
-		share.put("fabric-loader:inputGameJars", gameJars);
-		if (realmsJar != null) share.put("fabric-loader:inputRealmsJar", realmsJar);
-
 		String version = arguments.remove(Arguments.GAME_VERSION);
 		if (version == null) version = System.getProperty(SystemProperties.GAME_VERSION);
 		versionData = McVersionLookup.getVersion(gameJars, entrypoint, version);
@@ -306,7 +297,7 @@ public class MinecraftGameProvider implements GameProvider {
 		return true;
 	}
 
-	private static void processArgumentMap(Arguments argMap, EnvType envType) {
+	private static void processArgumentMap(Arguments argMap, Environment envType) {
 		switch (envType) {
 		case CLIENT:
 			if (!argMap.containsKey("accessToken")) {
@@ -331,7 +322,7 @@ public class MinecraftGameProvider implements GameProvider {
 			}
 
 			break;
-		case SERVER:
+		case DEDICATED_SERVER:
 			argMap.remove("version");
 			argMap.remove("gameDir");
 			argMap.remove("assetsDir");
@@ -377,10 +368,6 @@ public class MinecraftGameProvider implements GameProvider {
 				launcher.hideParentPath(obf);
 			}
 
-			obfJars = GameProviderHelper.deobfuscate(obfJars,
-					getGameId(), getNormalizedGameVersion(),
-					getLaunchDirectory(),
-					launcher);
 
 			for (int i = 0; i < gameJars.size(); i++) {
 				Path newJar = obfJars.get(names[i]);
@@ -476,7 +463,7 @@ public class MinecraftGameProvider implements GameProvider {
 
 	@Override
 	public boolean canOpenGui() {
-		if (arguments == null || envType == EnvType.CLIENT) {
+		if (arguments == null || envType == Environment.CLIENT) {
 			return true;
 		}
 
@@ -511,7 +498,7 @@ public class MinecraftGameProvider implements GameProvider {
 	public void launch(ClassLoader loader) {
 		String targetClass = entrypoint;
 
-		if (envType == EnvType.CLIENT && targetClass.contains("Applet")) {
+		if (envType == Environment.CLIENT && targetClass.contains("Applet")) {
 			Hooks.appletMainClass = targetClass;
 			targetClass = "org.quiltmc.loader.impl.game.minecraft.applet.AppletMain";
 		}

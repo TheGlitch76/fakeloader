@@ -11,12 +11,9 @@ plugins {
 	id 'eclipse'
 	id 'maven-publish'
 	id 'org.quiltmc.gradle.licenser' version '1.1.+'
-	id 'org.quiltmc.loom' version '1.1.+' apply false
+	id 'org.spongepowered.gradle.vanilla' apply false
 	id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
-
-sourceCompatibility = JavaVersion.VERSION_1_8
-targetCompatibility = JavaVersion.VERSION_1_8
 
 archivesBaseName = "quilt-loader"
 version = project.quilt_loader
@@ -89,8 +86,6 @@ dependencies {
 		exclude module: 'launchwrapper'
 		exclude module: 'guava'
 	}
-	api "net.fabricmc:tiny-mappings-parser:${project.tiny_mappings_parser}"
-	api "net.fabricmc:tiny-remapper:${project.tiny_remapper}"
 	api "net.fabricmc:access-widener:${project.access_widener}"
 
 	/*include*/ api "org.quiltmc:quilt-json5:${project.quilt_json5}"
@@ -125,9 +120,7 @@ test {
 
 processResources {
 	inputs.property "version", project.version
-	inputs.property "tiny_mappings_parser", project.tiny_mappings_parser
 	inputs.property "sponge_mixin", project.sponge_mixin
-	inputs.property "tiny_remapper", project.tiny_remapper
 	inputs.property "access_widener", project.access_widener
 	inputs.property "quilt_json5", project.quilt_json5
 	inputs.property "asm", project.asm
@@ -141,11 +134,9 @@ processResources {
 		expand "version": project.version
 	}
 
-	filesMatching(["quilt_installer.json", "fabric-installer.launchwrapper.json"]) {
+	filesMatching(["quilt_installer.json"]) {
 		expand(
-			"tiny_mappings_parser": project.tiny_mappings_parser,
 			"sponge_mixin": project.sponge_mixin,
-			"tiny_remapper": project.tiny_remapper,
 			"access_widener": project.access_widener,
 			"quilt_json5": project.quilt_json5,
 			"asm": project.asm,
@@ -159,14 +150,12 @@ processResources {
 }
 
 java {
-	sourceCompatibility = 8
-	targetCompatibility = 8
 	withJavadocJar()
 	withSourcesJar()
 }
 
 compileJava {
-	options.release.set(8)
+	options.release.set(17)
 }
 
 jar {

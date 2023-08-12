@@ -51,7 +51,6 @@ import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.zip.ZipException;
-import java.util.zip.ZipInputStream;
 
 import org.jetbrains.annotations.Nullable;
 import org.quiltmc.loader.api.FasterFiles;
@@ -64,6 +63,7 @@ import org.quiltmc.loader.api.VersionFormatException;
 import org.quiltmc.loader.api.gui.QuiltDisplayedError;
 import org.quiltmc.loader.api.gui.QuiltLoaderGui;
 import org.quiltmc.loader.api.gui.QuiltLoaderText;
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.api.minecraft.MinecraftQuiltLoader;
 import org.quiltmc.loader.api.plugin.ModMetadataExt;
 import org.quiltmc.loader.api.plugin.NonZipException;
@@ -91,7 +91,6 @@ import org.quiltmc.loader.impl.filesystem.QuiltBaseFileSystem;
 import org.quiltmc.loader.impl.filesystem.QuiltJoinedFileSystem;
 import org.quiltmc.loader.impl.filesystem.QuiltJoinedPath;
 import org.quiltmc.loader.impl.filesystem.QuiltMemoryFileSystem;
-import org.quiltmc.loader.impl.filesystem.QuiltMemoryPath;
 import org.quiltmc.loader.impl.filesystem.QuiltZipFileSystem;
 import org.quiltmc.loader.impl.filesystem.QuiltZipPath;
 import org.quiltmc.loader.impl.game.GameProvider;
@@ -99,7 +98,6 @@ import org.quiltmc.loader.impl.gui.GuiManagerImpl;
 import org.quiltmc.loader.impl.gui.QuiltJsonGuiMessage;
 import org.quiltmc.loader.impl.metadata.qmj.V1ModMetadataReader;
 import org.quiltmc.loader.impl.plugin.base.InternalModContainerBase;
-import org.quiltmc.loader.impl.plugin.fabric.StandardFabricPlugin;
 import org.quiltmc.loader.impl.plugin.gui.TempQuilt2OldStatusNode;
 import org.quiltmc.loader.impl.plugin.quilt.ModIdDefinition;
 import org.quiltmc.loader.impl.plugin.quilt.QuiltRuleBreak;
@@ -122,7 +120,7 @@ import org.quiltmc.loader.impl.util.log.Log;
 import org.quiltmc.loader.impl.util.log.LogCategory;
 import org.quiltmc.loader.util.sat4j.specs.TimeoutException;
 
-import net.fabricmc.api.EnvType;
+
 
 /** The main manager for loader plugins, and the mod finding process in general.
  * <p>
@@ -153,10 +151,8 @@ public class QuiltPluginManagerImpl implements QuiltPluginManager {
 	final Map<TentativeLoadOption, BasePluginContext> tentativeLoadOptions = new LinkedHashMap<>();
 
 	public final StandardQuiltPlugin theQuiltPlugin;
-	private final StandardFabricPlugin theFabricPlugin;
 
 	BuiltinPluginContext theQuiltPluginContext;
-	BuiltinPluginContext theFabricPluginContext;
 
 	final Map<QuiltLoaderPlugin, BasePluginContext> plugins = new LinkedHashMap<>();
 	final Map<String, QuiltPluginContextImpl> pluginsById = new HashMap<>();
@@ -216,7 +212,6 @@ public class QuiltPluginManagerImpl implements QuiltPluginManager {
 		mainThreadTasks.add(new MainThreadTask.ScanModFolderTask(modsDir, QUILT_ID));
 
 		theQuiltPlugin = new StandardQuiltPlugin();
-		theFabricPlugin = new StandardFabricPlugin();
 	}
 
 	private BuiltinPluginContext addBuiltinPlugin(BuiltinQuiltPlugin plugin, String id) {
@@ -645,11 +640,11 @@ public class QuiltPluginManagerImpl implements QuiltPluginManager {
 
 	@Override
 	@Deprecated
-	public EnvType getEnvironment() {
+	public Environment getEnvironment() {
 		if (game != null) {
 			return MinecraftQuiltLoader.getEnvironmentType();
 		}
-		return EnvType.CLIENT;
+		return Environment.CLIENT;
 	}
 
 	// #######
@@ -1173,7 +1168,6 @@ public class QuiltPluginManagerImpl implements QuiltPluginManager {
 	private ModSolveResultImpl runInternal(boolean scanClasspath) throws ModResolutionException, TimeoutException {
 
 		theQuiltPluginContext = addBuiltinPlugin(theQuiltPlugin, QUILT_ID);
-		theFabricPluginContext = addBuiltinPlugin(theFabricPlugin, "quilted_fabric_loader");
 
 		if (game != null) {
 			theQuiltPlugin.addBuiltinMods(game);

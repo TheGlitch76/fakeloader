@@ -40,8 +40,6 @@ import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 import org.quiltmc.loader.impl.util.log.Log;
 import org.quiltmc.loader.impl.util.log.LogCategory;
 
-import net.fabricmc.loader.api.metadata.ModEnvironment;
-
 @QuiltLoaderInternal(QuiltLoaderInternalType.NEW_INTERNAL)
 public class QuiltRuleDepOnly extends QuiltRuleDep {
 
@@ -223,7 +221,7 @@ public class QuiltRuleDepOnly extends QuiltRuleDep {
 		errors.append(" on ");
 		errors.append(publicDep.id());
 		errors.append(" versions ");
-		errors.append(publicDep.versions());
+		errors.append(publicDep.versionRange());
 		errors.append(" (");
 		errors.append(validOptions.size());
 		errors.append(" valid options, ");

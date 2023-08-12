@@ -19,7 +19,7 @@ package org.quiltmc.loader.api.minecraft;
 
 import org.quiltmc.loader.impl.QuiltLoaderImpl;
 
-import net.fabricmc.api.EnvType;
+
 
 /** Public access for some minecraft-specific functionality in quilt loader. */
 public final class MinecraftQuiltLoader {
@@ -30,7 +30,7 @@ public final class MinecraftQuiltLoader {
 	 *
 	 * @return the current environment type
 	 */
-	public static EnvType getEnvironmentType() {
+	public static Environment getEnvironmentType() {
 		// TODO: Get this from a plugin instead!
 		QuiltLoaderImpl impl = QuiltLoaderImpl.INSTANCE;
 		if (impl == null) {

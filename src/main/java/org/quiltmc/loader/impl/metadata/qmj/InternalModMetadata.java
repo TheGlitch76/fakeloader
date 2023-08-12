@@ -17,20 +17,17 @@
 package org.quiltmc.loader.impl.metadata.qmj;
 
 import java.util.Collection;
-import java.util.Map;
 
-import org.quiltmc.loader.api.ModContainer;
 import org.quiltmc.loader.api.ModMetadata;
-import org.quiltmc.loader.api.ModMetadataToBeMovedToPlugins;
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.api.plugin.ModMetadataExt;
-import org.quiltmc.loader.impl.metadata.FabricLoaderModMetadata;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 
 /** Internal mod metadata interface which stores implementation detail. */
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_EXPOSED)
 public interface InternalModMetadata
-	extends ModMetadata, ModMetadataExt, ConvertibleModMetadata {
+	extends ModMetadata, ModMetadataExt {
 
 	@Override
 	default boolean shouldQuiltDefineDependencies() {
@@ -48,8 +45,5 @@ public interface InternalModMetadata
 
 	String intermediateMappings();
 
-	@Override
-	default InternalModMetadata asQuiltModMetadata() {
-		return this;
-	}
+	Collection<String> mixins(Environment env);
 }

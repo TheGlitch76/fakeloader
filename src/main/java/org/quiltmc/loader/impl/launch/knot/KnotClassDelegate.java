@@ -16,34 +16,6 @@
 
 package org.quiltmc.loader.impl.launch.knot;
 
-import net.fabricmc.api.EnvType;
-import org.quiltmc.loader.impl.util.LoaderUtil;
-import org.objectweb.asm.ClassReader;
-import org.quiltmc.loader.api.ModContainer;
-import org.quiltmc.loader.api.QuiltLoader;
-import org.quiltmc.loader.api.ModContainer.BasicSourceType;
-import org.quiltmc.loader.api.minecraft.ClientOnly;
-import org.quiltmc.loader.api.minecraft.DedicatedServerOnly;
-import org.quiltmc.loader.impl.QuiltLoaderImpl;
-import org.quiltmc.loader.impl.game.GameProvider;
-import org.quiltmc.loader.impl.launch.common.QuiltCodeSource;
-import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
-import org.quiltmc.loader.impl.patch.PatchLoader;
-import org.quiltmc.loader.impl.transformer.PackageEnvironmentStrippingData;
-import org.quiltmc.loader.impl.transformer.QuiltTransformer;
-import org.quiltmc.loader.impl.util.FileSystemUtil;
-import org.quiltmc.loader.impl.util.FileUtil;
-import org.quiltmc.loader.impl.util.ManifestUtil;
-import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
-import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
-import org.quiltmc.loader.impl.util.SystemProperties;
-import org.quiltmc.loader.impl.util.UrlConversionException;
-import org.quiltmc.loader.impl.util.UrlUtil;
-import org.quiltmc.loader.impl.util.log.Log;
-import org.quiltmc.loader.impl.util.log.LogCategory;
-import org.spongepowered.asm.mixin.transformer.IMixinTransformer;
-
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
@@ -61,6 +33,30 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.Manifest;
+
+import org.objectweb.asm.ClassReader;
+import org.quiltmc.loader.api.ModContainer;
+import org.quiltmc.loader.api.QuiltLoader;
+import org.quiltmc.loader.api.minecraft.Environment;
+import org.quiltmc.loader.impl.QuiltLoaderImpl;
+import org.quiltmc.loader.impl.game.GameProvider;
+import org.quiltmc.loader.impl.launch.common.QuiltCodeSource;
+import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
+import org.quiltmc.loader.impl.patch.PatchLoader;
+import org.quiltmc.loader.impl.transformer.PackageEnvironmentStrippingData;
+import org.quiltmc.loader.impl.transformer.QuiltTransformer;
+import org.quiltmc.loader.impl.util.FileSystemUtil;
+import org.quiltmc.loader.impl.util.FileUtil;
+import org.quiltmc.loader.impl.util.LoaderUtil;
+import org.quiltmc.loader.impl.util.ManifestUtil;
+import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
+import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
+import org.quiltmc.loader.impl.util.SystemProperties;
+import org.quiltmc.loader.impl.util.UrlConversionException;
+import org.quiltmc.loader.impl.util.UrlUtil;
+import org.quiltmc.loader.impl.util.log.Log;
+import org.quiltmc.loader.impl.util.log.LogCategory;
+import org.spongepowered.asm.mixin.transformer.IMixinTransformer;
 
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_EXPOSED)
 class KnotClassDelegate {
@@ -97,7 +93,7 @@ class KnotClassDelegate {
 	private final KnotClassLoaderInterface itf;
 	private final GameProvider provider;
 	private final boolean isDevelopment;
-	private final EnvType envType;
+	private final Environment environment;
 	private IMixinTransformer mixinTransformer;
 	private boolean transformInitialized = false;
 	private boolean transformFinishedLoading = false;
@@ -112,9 +108,9 @@ class KnotClassDelegate {
 	/** Map of package to whether we can load it in this environment. */
 	private final Map<String, Boolean> packageSideCache = new ConcurrentHashMap<>();
 
-	KnotClassDelegate(boolean isDevelopment, EnvType envType, KnotClassLoaderInterface itf, GameProvider provider) {
+	KnotClassDelegate(boolean isDevelopment, Environment environment, KnotClassLoaderInterface itf, GameProvider provider) {
 		this.isDevelopment = isDevelopment;
-		this.envType = envType;
+		this.environment = environment;
 		this.itf = itf;
 		this.provider = provider;
 	}
@@ -281,7 +277,7 @@ class KnotClassDelegate {
 			});
 
 			if (permitted != null && !permitted) {
-				throw new RuntimeException("Cannot load package " + pkgString + " in environment type " + envType);
+				throw new RuntimeException("Cannot load package " + pkgString + " in environment type " + environment);
 			}
 
 			Package pkg = itf.getPackage(pkgString);
@@ -321,7 +317,7 @@ class KnotClassDelegate {
 				// No package-info class file
 				return true;
 			}
-			PackageEnvironmentStrippingData data = new PackageEnvironmentStrippingData(QuiltLoaderImpl.ASM_VERSION, envType);
+			PackageEnvironmentStrippingData data = new PackageEnvironmentStrippingData(QuiltLoaderImpl.ASM_VERSION, environment);
 			new ClassReader(bytes).accept(data, ClassReader.SKIP_CODE | ClassReader.SKIP_FRAMES);
 			return !data.stripEntirePackage;
 		} catch (IOException e) {
@@ -504,7 +500,7 @@ class KnotClassDelegate {
 		}
 
 		if (input != null) {
-			return QuiltTransformer.transform(isDevelopment, envType, name, input);
+			return QuiltTransformer.transform(isDevelopment, environment, name, input);
 		}
 
 		return null;
@@ -513,7 +509,7 @@ class KnotClassDelegate {
 	private static boolean canTransformClass(String name) {
 		name = name.replace('/', '.');
 		// Blocking Fabric Loader classes is no longer necessary here as they don't exist on the modding class loader
-		return /* !"net.fabricmc.api.EnvType".equals(name) && !name.startsWith("net.fabricmc.loader.") && */ !name.startsWith("org.apache.logging.log4j");
+		return /* !"net.fabricmc.api.Environment".equals(name) && !name.startsWith("net.fabricmc.loader.") && */ !name.startsWith("org.apache.logging.log4j");
 	}
 
 	public byte[] getRawClassByteArray(String name, boolean allowFromParent) throws IOException {

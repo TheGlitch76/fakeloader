@@ -20,12 +20,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
-
-import net.fabricmc.loader.api.SemanticVersion;
-import net.fabricmc.loader.api.Version;
-import net.fabricmc.loader.api.VersionParsingException;
-import net.fabricmc.loader.api.metadata.version.VersionPredicate;
-
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -38,20 +32,20 @@ import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
+import org.quiltmc.loader.api.VersionInterval;
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.impl.entrypoint.GamePatch;
 
-import org.quiltmc.loader.impl.fabric.util.version.VersionPredicateParser;
 import org.quiltmc.loader.impl.game.minecraft.MinecraftGameProvider;
 import org.quiltmc.loader.impl.launch.common.QuiltLauncher;
 import org.quiltmc.loader.impl.util.log.Log;
 import org.quiltmc.loader.impl.util.log.LogCategory;
 
-import net.fabricmc.api.EnvType;
 import org.quiltmc.loader.impl.game.minecraft.Hooks;
-
+import org.quiltmc.loader.api.Version;
 
 public class EntrypointPatch extends GamePatch {
-	private static final VersionPredicate VERSION_1_19_4 = createVersionPredicate(">=1.19.4-");
+	private static final VersionInterval VERSION_1_19_4 = VersionInterval.of(Version.of("1.19.4-"), true, null, false);
 
 	private final MinecraftGameProvider gameProvider;
 
@@ -59,14 +53,14 @@ public class EntrypointPatch extends GamePatch {
 		this.gameProvider = gameProvider;
 	}
 
-	private void finishEntrypoint(EnvType type, ListIterator<AbstractInsnNode> it) {
-		String methodName = String.format("start%s", type == EnvType.CLIENT ? "Client" : "Server");
+	private void finishEntrypoint(Environment type, ListIterator<AbstractInsnNode> it) {
+		String methodName = String.format("start%s", type == Environment.CLIENT ? "Client" : "Server");
 		it.add(new MethodInsnNode(Opcodes.INVOKESTATIC, Hooks.INTERNAL_NAME, methodName, "(Ljava/io/File;Ljava/lang/Object;)V", false));
 	}
 
 	@Override
 	public void process(QuiltLauncher launcher, Function<String, ClassReader> classSource, Consumer<ClassNode> classEmitter) {
-		EnvType type = launcher.getEnvironmentType();
+		Environment type = launcher.getEnvironmentType();
 		String entrypoint = launcher.getEntrypoint();
 		Version gameVersion = getGameVersion();
 
@@ -97,7 +91,7 @@ public class EntrypointPatch extends GamePatch {
 
 		boolean is20w22aServerOrHigher = false;
 
-		if (type == EnvType.CLIENT) {
+		if (type == Environment.CLIENT) {
 			// pre-1.6 route
 			List<FieldNode> newGameFields = findFields(mainClass,
 					(f) -> !isStatic(f.access) && f.desc.startsWith("L") && !f.desc.startsWith("Ljava/")
@@ -116,7 +110,7 @@ public class EntrypointPatch extends GamePatch {
 				throw new RuntimeException("Could not find main method in " + entrypoint + "!");
 			}
 
-			if (type == EnvType.CLIENT && mainMethod.instructions.size() < 10) {
+			if (type == Environment.CLIENT && mainMethod.instructions.size() < 10) {
 				// 22w24+ forwards to another method in the same class instead of processing in main() directly, use that other method instead if that's the case
 				MethodInsnNode invocation = null;
 
@@ -140,7 +134,7 @@ public class EntrypointPatch extends GamePatch {
 					final MethodInsnNode reqMethod = invocation;
 					mainMethod = findMethod(mainClass, m -> m.name.equals(reqMethod.name) && m.desc.equals(reqMethod.desc));
 				}
-			} else if (type == EnvType.SERVER) {
+			} else if (type == Environment.DEDICATED_SERVER) {
 				// pre-1.6 method search route
 				MethodInsnNode newGameInsn = (MethodInsnNode) findInsn(mainMethod,
 						(insn) -> insn.getOpcode() == Opcodes.INVOKESPECIAL && ((MethodInsnNode) insn).name.equals("<init>") && ((MethodInsnNode) insn).owner.equals(mainClass.name),
@@ -156,21 +150,21 @@ public class EntrypointPatch extends GamePatch {
 			if (gameEntrypoint == null) {
 				// modern method search routes
 				MethodInsnNode newGameInsn = (MethodInsnNode) findInsn(mainMethod,
-						type == EnvType.CLIENT
+						type == Environment.CLIENT
 								? (insn) -> (insn.getOpcode() == Opcodes.INVOKESPECIAL || insn.getOpcode() == Opcodes.INVOKEVIRTUAL) && !((MethodInsnNode) insn).owner.startsWith("java/")
 								: (insn) -> insn.getOpcode() == Opcodes.INVOKESPECIAL && ((MethodInsnNode) insn).name.equals("<init>") && hasSuperClass(((MethodInsnNode) insn).owner, mainClass.name, classSource),
 						true
 				);
 
 				// New 20w20b way of finding the server constructor
-				if (newGameInsn == null && type == EnvType.SERVER) {
+				if (newGameInsn == null && type == Environment.DEDICATED_SERVER) {
 					newGameInsn = (MethodInsnNode) findInsn(mainMethod,
 							insn -> (insn instanceof MethodInsnNode) && insn.getOpcode() == Opcodes.INVOKESPECIAL && hasStrInMethod(((MethodInsnNode) insn).owner, "<clinit>", "()V", "^[a-fA-F0-9]{40}$", classSource),
 							false);
 				}
 
 				// Detect 20w22a by searching for a specific log message
-				if (type == EnvType.SERVER && hasStrInMethod(mainClass.name, mainMethod.name, mainMethod.desc, "Safe mode active, only vanilla datapack will be loaded", classSource)) {
+				if (type == Environment.DEDICATED_SERVER && hasStrInMethod(mainClass.name, mainMethod.name, mainMethod.desc, "Safe mode active, only vanilla datapack will be loaded", classSource)) {
 					is20w22aServerOrHigher = true;
 					gameEntrypoint = mainClass.name;
 				}
@@ -213,7 +207,7 @@ public class EntrypointPatch extends GamePatch {
 					}
 				}
 
-				if (type == EnvType.CLIENT && !isApplet && gameMethodQuality < 2) {
+				if (type == Environment.CLIENT && !isApplet && gameMethodQuality < 2) {
 					// Try to find a method with an LDC string "LWJGL Version: ".
 					// This is the "init()" method, or as of 19w38a is the constructor, or called somewhere in that vicinity,
 					// and is by far superior in hooking into for a well-off mod start.
@@ -267,7 +261,7 @@ public class EntrypointPatch extends GamePatch {
 		boolean patched = false;
 		Log.debug(LogCategory.GAME_PATCH, "Patching game constructor %s%s", gameMethod.name, gameMethod.desc);
 
-		if (type == EnvType.SERVER) {
+		if (type == Environment.DEDICATED_SERVER) {
 			ListIterator<AbstractInsnNode> it = gameMethod.instructions.iterator();
 
 			if (!is20w22aServerOrHigher) {
@@ -419,7 +413,7 @@ public class EntrypointPatch extends GamePatch {
 
 				patched = true;
 			}
-		} else if (type == EnvType.CLIENT && isApplet) {
+		} else if (type == Environment.CLIENT && isApplet) {
 			// Applet-side: field is private static File, run at end
 			// At the beginning, set file field (hook)
 			FieldNode runDirectory = findField(gameClass, (f) -> isStatic(f.access) && f.desc.equals("Ljava/io/File;"));
@@ -494,7 +488,7 @@ public class EntrypointPatch extends GamePatch {
 
 					// Add the hook just before the Thread.currentThread() call for 1.19.4 or later
 					// If older 4 method insn's before the lwjgl log
-					if (currentThreadNode != null && VERSION_1_19_4.test(gameVersion)) {
+					if (currentThreadNode != null && VERSION_1_19_4.isSatisfiedBy(gameVersion)) {
 						moveBefore(it, currentThreadNode);
 					} else if (lwjglLogNode != null) {
 						moveBefore(it, lwjglLogNode);
@@ -570,18 +564,7 @@ public class EntrypointPatch extends GamePatch {
 	}
 
 	private Version getGameVersion() {
-		try {
-			return Version.parse(gameProvider.getNormalizedGameVersion());
-		} catch (VersionParsingException e) {
-			throw new RuntimeException(e);
-		}
+		return Version.of(gameProvider.getNormalizedGameVersion());
 	}
 
-	private static VersionPredicate createVersionPredicate(String predicate) {
-		try {
-			return VersionPredicateParser.parse(predicate);
-		} catch (VersionParsingException e) {
-			throw new RuntimeException(e);
-		}
-	}
 }

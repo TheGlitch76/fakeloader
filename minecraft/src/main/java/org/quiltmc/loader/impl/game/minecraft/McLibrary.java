@@ -1,20 +1,19 @@
 package org.quiltmc.loader.impl.game.minecraft;
 
-import net.fabricmc.api.EnvType;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.impl.game.LibClassifier;
 
 enum McLibrary implements LibClassifier.LibraryType {
-	MC_CLIENT(EnvType.CLIENT, "net/minecraft/client/main/Main.class", "net/minecraft/client/MinecraftApplet.class", "com/mojang/minecraft/MinecraftApplet.class"),
-	MC_SERVER(EnvType.SERVER, "net/minecraft/server/Main.class", "net/minecraft/server/MinecraftServer.class", "com/mojang/minecraft/server/MinecraftServer.class"),
+	MC_CLIENT(Environment.CLIENT, "net/minecraft/client/main/Main.class", "net/minecraft/client/MinecraftApplet.class", "com/mojang/minecraft/MinecraftApplet.class"),
+	MC_SERVER(Environment.DEDICATED_SERVER, "net/minecraft/server/Main.class", "net/minecraft/server/MinecraftServer.class", "com/mojang/minecraft/server/MinecraftServer.class"),
 	MC_COMMON("net/minecraft/server/MinecraftServer.class"),
 	MC_ASSETS_ROOT("assets/.mcassetsroot"),
-	MC_BUNDLER(EnvType.SERVER, "net/minecraft/bundler/Main.class"),
-	REALMS(EnvType.CLIENT, "realmsVersion", "com/mojang/realmsclient/RealmsVersion.class"),
+	MC_BUNDLER(Environment.DEDICATED_SERVER, "net/minecraft/bundler/Main.class"),
+	REALMS(Environment.CLIENT, "realmsVersion", "com/mojang/realmsclient/RealmsVersion.class"),
 	MODLOADER("ModLoader"),
 	LOG4J_API("org/apache/logging/log4j/LogManager.class"),
 	LOG4J_CORE("META-INF/services/org.apache.logging.log4j.spi.Provider", "META-INF/log4j-provider.properties"),
@@ -45,7 +44,7 @@ enum McLibrary implements LibClassifier.LibraryType {
 		MINECRAFT_SPECIFIC = Collections.unmodifiableMap(map);
 	}
 
-	private final EnvType env;
+	private final Environment env;
 	private final String[] paths;
 
 	McLibrary(String path) {
@@ -56,13 +55,13 @@ enum McLibrary implements LibClassifier.LibraryType {
 		this(null, paths);
 	}
 
-	McLibrary(EnvType env, String... paths) {
+	McLibrary(Environment env, String... paths) {
 		this.paths = paths;
 		this.env = env;
 	}
 
 	@Override
-	public boolean isApplicable(EnvType env) {
+	public boolean isApplicable(Environment env) {
 		return this.env == null || this.env == env;
 	}
 

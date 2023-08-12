@@ -16,10 +16,9 @@
 
 package org.quiltmc.loader.impl.launch.knot;
 
-import net.fabricmc.api.EnvType;
-
 import org.quiltmc.loader.api.ModContainer;
 import org.quiltmc.loader.api.ModContainer.BasicSourceType;
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.impl.FormattedException;
 import org.quiltmc.loader.impl.QuiltLoaderImpl;
 import org.quiltmc.loader.impl.config.QuiltConfigImpl;
@@ -63,12 +62,12 @@ public final class Knot extends QuiltLauncherBase {
 
 	private KnotClassLoaderInterface classLoader;
 	private boolean isDevelopment;
-	private EnvType envType;
+	private Environment environment;
 	private final List<Path> classPath = new ArrayList<>();
 	private GameProvider provider;
 	private boolean unlocked;
 
-	public static void launch(String[] args, EnvType type) {
+	public static void launch(String[] args, Environment type) {
 		setupUncaughtExceptionHandler();
 
 		try {
@@ -85,24 +84,24 @@ public final class Knot extends QuiltLauncherBase {
 		}
 	}
 
-	public Knot(EnvType type) {
-		this.envType = type;
+	public Knot(Environment type) {
+		this.environment = type;
 	}
 
 	public ClassLoader init(String[] args) {
 		setProperties(properties);
 
 		// configure fabric vars
-		if (envType == null) {
+		if (environment == null) {
 			String side = System.getProperty(SystemProperties.SIDE);
 			if (side == null) throw new RuntimeException("Please specify side or use a dedicated Knot!");
 
 			switch (side.toLowerCase(Locale.ROOT)) {
 			case "client":
-				envType = EnvType.CLIENT;
+				environment = Environment.CLIENT;
 				break;
 			case "server":
-				envType = EnvType.SERVER;
+				environment = Environment.DEDICATED_SERVER;
 				break;
 			default:
 				throw new RuntimeException("Invalid side provided: must be \"client\" or \"server\"!");
@@ -135,7 +134,7 @@ public final class Knot extends QuiltLauncherBase {
 		// Setup classloader
 		// TODO: Provide KnotCompatibilityClassLoader in non-exclusive-Fabric pre-1.13 environments?
 		boolean useCompatibility = provider.requiresUrlClassLoader() || Boolean.parseBoolean(System.getProperty("fabric.loader.useCompatibilityClassLoader", "false"));
-		classLoader = useCompatibility ? new KnotCompatibilityClassLoader(isDevelopment(), envType, provider) : new KnotClassLoader(isDevelopment(), envType, provider);
+		classLoader = useCompatibility ? new KnotCompatibilityClassLoader(isDevelopment(), environment, provider) : new KnotClassLoader(isDevelopment(), environment, provider);
 		ClassLoader cl = (ClassLoader) classLoader;
 
 		provider.initialize(this);
@@ -360,8 +359,8 @@ public final class Knot extends QuiltLauncherBase {
 	}
 
 	@Override
-	public EnvType getEnvironmentType() {
-		return envType;
+	public Environment getEnvironmentType() {
+		return environment;
 	}
 
 	@Override

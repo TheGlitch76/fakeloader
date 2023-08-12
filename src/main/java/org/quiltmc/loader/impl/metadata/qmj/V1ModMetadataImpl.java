@@ -25,19 +25,15 @@ import java.util.stream.Collectors;
 import org.jetbrains.annotations.Nullable;
 import org.quiltmc.json5.exception.ParseException;
 import org.quiltmc.loader.api.LoaderValue;
-import org.quiltmc.loader.api.ModContainer;
 import org.quiltmc.loader.api.ModContributor;
 import org.quiltmc.loader.api.ModDependency;
+import org.quiltmc.loader.api.ModEnvironment;
 import org.quiltmc.loader.api.ModLicense;
 import org.quiltmc.loader.api.Version;
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.api.plugin.ModContainerExt;
-import org.quiltmc.loader.impl.metadata.FabricLoaderModMetadata;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
-
-import net.fabricmc.loader.api.metadata.ModEnvironment;
-
-import net.fabricmc.api.EnvType;
 
 import org.quiltmc.loader.impl.util.SystemProperties;
 import org.quiltmc.loader.impl.util.log.Log;
@@ -72,8 +68,6 @@ final class V1ModMetadataImpl implements InternalModMetadata {
 	private final Collection<String> accessWideners;
 	private final ModEnvironment environment;
 	private final @Nullable ModPlugin plugin;
-	private QuiltModMetadataWrapperFabric cache2fabricNoContainer;
-	private QuiltModMetadataWrapperFabric cache2fabricWithContainer;
 
 	V1ModMetadataImpl(
 			V1ModMetadataBuilder builder
@@ -144,10 +138,10 @@ final class V1ModMetadataImpl implements InternalModMetadata {
 			plugin = null;
 		} else {
 			if (!Boolean.getBoolean(SystemProperties.ENABLE_EXPERIMENTAL_LOADING_PLUGINS)) {
-				throw new ParseException("Mod " + asQuiltModMetadata().id() + " provides a loader plugin, which is not yet allowed!");
+				throw new ParseException("Mod " + id() + " provides a loader plugin, which is not yet allowed!");
 			}
 			// humorous error message dirties the log + again makes it clear you shouldn't be doing this
-			Log.error(LogCategory.GENERAL, "MOD " + asQuiltModMetadata().id() + " PROVIDES A PLUGIN!" +
+			Log.error(LogCategory.GENERAL, "MOD " + id() + " PROVIDES A PLUGIN!" +
 					"MOD-PROVIDED PLUGINS ARE FOR AMUSEMENT PURPOSES ONLY." +
 					" NO WARRANTY IS PROVIDED, EXPRESS OR IMPLIED. CONTINUE AT YOUR OWN RISK.");
 
@@ -170,21 +164,6 @@ final class V1ModMetadataImpl implements InternalModMetadata {
 		this.plugin = plugin;
 	}
 
-	@Override
-	public FabricLoaderModMetadata asFabricModMetadata() {
-		if (cache2fabricNoContainer == null) {
-			cache2fabricNoContainer = new QuiltModMetadataWrapperFabric(this, null);
-		}
-		return cache2fabricNoContainer;
-	}
-
-	@Override
-	public FabricLoaderModMetadata asFabricModMetadata(ModContainerExt quiltContainer) {
-		if (cache2fabricWithContainer == null) {
-			cache2fabricNoContainer = cache2fabricWithContainer = new QuiltModMetadataWrapperFabric(this, quiltContainer);
-		}
-		return cache2fabricWithContainer;
-	}
 
 	@Override
 	public String id() {
@@ -308,7 +287,7 @@ final class V1ModMetadataImpl implements InternalModMetadata {
 	}
 
 	@Override
-	public Collection<String> mixins(EnvType env) {
+	public Collection<String> mixins(Environment env) {
 		return this.mixins;
 	}
 

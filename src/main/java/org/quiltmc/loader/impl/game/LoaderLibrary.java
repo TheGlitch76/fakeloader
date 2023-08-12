@@ -26,15 +26,12 @@ import org.objectweb.asm.tree.analysis.Analyzer;
 import org.objectweb.asm.util.CheckClassAdapter;
 import org.quiltmc.config.api.Config;
 import org.quiltmc.json5.JsonReader;
-import org.quiltmc.loader.impl.util.SystemProperties;
+import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.impl.util.UrlConversionException;
 import org.quiltmc.loader.impl.util.UrlUtil;
 import org.spongepowered.asm.launch.MixinBootstrap;
 
 import net.fabricmc.accesswidener.AccessWidener;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.mapping.tree.TinyMappingFactory;
-import net.fabricmc.tinyremapper.TinyRemapper;
 
 enum LoaderLibrary {
 	QUILT_LOADER(UrlUtil.LOADER_CODE_SOURCE),
@@ -44,8 +41,6 @@ enum LoaderLibrary {
 	ASM_TREE(ClassNode.class),
 	ASM_UTIL(CheckClassAdapter.class),
 	SPONGE_MIXIN(MixinBootstrap.class),
-	TINY_MAPPINGS_PARSER(TinyMappingFactory.class),
-	TINY_REMAPPER(TinyRemapper.class),
 	ACCESS_WIDENER(AccessWidener.class),
 	QUILT_JSON5(JsonReader.class),
 	QUILT_CONFIG(Config.class),
@@ -54,8 +49,8 @@ enum LoaderLibrary {
 //
 //	SAT4J_CORE(ContradictionException.class),
 //	SAT4J_PB(SolverFactory.class),
-	SERVER_LAUNCH("quilt-server-launch.properties", EnvType.SERVER), // installer generated jar to run setup loader's class path
-//	SERVER_LAUNCHER("net/fabricmc/installer/ServerLauncher.class", EnvType.SERVER); // installer based launch-through method
+	SERVER_LAUNCH("quilt-server-launch.properties", Environment.DEDICATED_SERVER), // installer generated jar to run setup loader's class path
+//	SERVER_LAUNCHER("net/fabricmc/installer/ServerLauncher.class", Environment.DEDICATED_SERVER); // installer based launch-through method
 	JUNIT_API("org/junit/jupiter/api/Test.class", null),
 	JUNIT_PLATFORM_ENGINE("org/junit/platform/engine/TestEngine.class", null),
 	JUNIT_PLATFORM_LAUNCHER("org/junit/platform/launcher/core/LauncherFactory.class", null),
@@ -70,7 +65,7 @@ enum LoaderLibrary {
 	SLF4J_API("org/slf4j/Logger.class", true);
 
 	final Path path;
-	final EnvType env;
+	final Environment env;
 	final boolean junitRunOnly;
 
 	LoaderLibrary(Class<?> cls) {
@@ -85,10 +80,10 @@ enum LoaderLibrary {
 		this.junitRunOnly = false;
 	}
 
-	LoaderLibrary(String file, EnvType env) {
+	LoaderLibrary(String file, Environment env) {
 		this(file, env, false);
 	}
-	LoaderLibrary(String file, EnvType env, boolean junitRunOnly) {
+	LoaderLibrary(String file, Environment env, boolean junitRunOnly) {
 		URL url = LoaderLibrary.class.getClassLoader().getResource(file);
 
 		try {
@@ -105,7 +100,7 @@ enum LoaderLibrary {
 		this(file, null, junitRunOnly);
 	}
 
-	boolean isApplicable(EnvType env, boolean junitRun) {
+	boolean isApplicable(Environment env, boolean junitRun) {
 		return (this.env == null || this.env == env) && (!junitRunOnly || junitRun);
 	}
 }

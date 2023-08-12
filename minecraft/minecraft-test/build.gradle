@@ -1,11 +1,18 @@
-apply plugin: "org.quiltmc.loom"
+apply plugin: "org.spongepowered.gradle.vanilla"
 
 sourceCompatibility = JavaVersion.VERSION_17
 targetCompatibility = JavaVersion.VERSION_17
 
-loom {
-	runConfigs.configureEach {
-		ideConfigGenerated = true
+
+minecraft {
+	version("1.20") // or: latestRelease() or latestSnapshot()
+	runs {
+		server()
+		client() {
+			mainClass = "org.quiltmc.loader.impl.launch.knot.KnotClient"
+    		classpath.from(project(':').sourceSets.main.output)
+    		classpath.from(project(':minecraft').sourceSets.main.output)
+		}
 	}
 }
 
@@ -15,9 +22,6 @@ repositories {
 
 dependencies {
 	testImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'
-	minecraft "com.mojang:minecraft:23w12a"
-	mappings "org.quiltmc:quilt-mappings:23w12a+build.1:intermediary-v2"
-
 
 	implementation project(":minecraft")
 	implementation project(":minecraft").sourceSets.main.output
@@ -54,7 +58,7 @@ tasks.withType(JavaCompile).configureEach {
 	it.options.release.set(17)
 }
 
-runClient {
-    classpath += project(':').sourceSets.main.output
-    classpath += project(':minecraft').sourceSets.main.output
-}
+//runClient {
+//    classpath += project(':').sourceSets.main.output
+//    classpath += project(':minecraft').sourceSets.main.output
+//}
