@@ -42,6 +42,7 @@ import org.quiltmc.loader.impl.QuiltLoaderImpl;
 import org.quiltmc.loader.impl.game.GameProvider;
 import org.quiltmc.loader.impl.launch.common.QuiltCodeSource;
 import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
+import org.quiltmc.loader.impl.launch.knot.mixin.MixinServiceTransformCache;
 import org.quiltmc.loader.impl.patch.PatchLoader;
 import org.quiltmc.loader.impl.transformer.PackageEnvironmentStrippingData;
 import org.quiltmc.loader.impl.transformer.QuiltTransformer;
@@ -94,7 +95,7 @@ class KnotClassDelegate {
 	private final GameProvider provider;
 	private final boolean isDevelopment;
 	private final Environment environment;
-	private IMixinTransformer mixinTransformer;
+
 	private boolean transformInitialized = false;
 	private boolean transformFinishedLoading = false;
 	private String transformCacheUrl;
@@ -113,33 +114,6 @@ class KnotClassDelegate {
 		this.environment = environment;
 		this.itf = itf;
 		this.provider = provider;
-	}
-
-	public void initializeTransformers() {
-		if (transformInitialized) throw new IllegalStateException("Cannot initialize KnotClassDelegate twice!");
-
-		mixinTransformer = MixinServiceKnot.getTransformer();
-
-		if (mixinTransformer == null) {
-			try { // reflective instantiation for older mixin versions
-				@SuppressWarnings("unchecked")
-				Constructor<IMixinTransformer> ctor = (Constructor<IMixinTransformer>) Class.forName("org.spongepowered.asm.mixin.transformer.MixinTransformer").getConstructor();
-				ctor.setAccessible(true);
-				mixinTransformer = ctor.newInstance();
-			} catch (ReflectiveOperationException e) {
-				Log.debug(LogCategory.KNOT, "Can't create Mixin transformer through reflection (only applicable for 0.8-0.8.2): %s", e);
-
-				// both lookups failed (not received through IMixinService.offer and not found through reflection)
-				throw new IllegalStateException("mixin transformer unavailable?");
-			}
-		}
-
-		transformInitialized = true;
-	}
-
-	private IMixinTransformer getMixinTransformer() {
-		assert mixinTransformer != null;
-		return mixinTransformer;
 	}
 
 	Class<?> loadClass(String name, ClassLoader parent, boolean resolve) throws ClassNotFoundException {
@@ -446,7 +420,7 @@ class KnotClassDelegate {
 		}
 
 		try {
-			return getMixinTransformer().transformClassBytes(name, name, transformedClassArray);
+			return transformedClassArray;
 		} catch (Throwable t) {
 			String msg = String.format("Mixin transformation of %s failed", name);
 			Log.warn(LogCategory.KNOT, msg, t);

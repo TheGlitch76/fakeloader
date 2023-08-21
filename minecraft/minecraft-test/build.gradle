@@ -12,7 +12,10 @@ minecraft {
 			mainClass = "org.quiltmc.loader.impl.launch.knot.KnotClient"
     		classpath.from(project(':').sourceSets.main.output)
     		classpath.from(project(':minecraft').sourceSets.main.output)
-			jvmArgs("-Dloader.development=true")
+			jvmArgs("-Dloader.development=true", "-Dloader.debug.filesystem.dump_contents=true")
+
+			var prefix = this.project.buildDir.toPath()
+			jvmArgs("-Dloader.classPathGroups=" + prefix.resolve("classes/java/main") + ";" + prefix.resolve("resources/main"))
 		}
 	}
 }
@@ -23,10 +26,7 @@ repositories {
 
 dependencies {
 	testImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'
-
-	implementation project(":minecraft")
-	implementation project(":minecraft").sourceSets.main.output
-	implementation project(":").sourceSets.main.output
+	implementation project(":")
 	// so that it works on runtime
 	implementation "org.quiltmc.chasm:chassembly:${project.quilt_chasm}"
 	implementation "org.quiltmc.chasm:chasm:${project.quilt_chasm}"

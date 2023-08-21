@@ -37,8 +37,11 @@ import java.util.TreeMap;
 
 import org.quiltmc.loader.api.FasterFiles;
 import org.quiltmc.loader.api.QuiltLoader;
+import org.quiltmc.loader.api.minecraft.MinecraftQuiltLoader;
 import org.quiltmc.loader.api.plugin.solver.ModLoadOption;
 import org.quiltmc.loader.api.plugin.solver.ModSolveResult;
+import org.quiltmc.loader.impl.Data4MixinService;
+import org.quiltmc.loader.impl.QuiltLoaderImpl;
 import org.quiltmc.loader.impl.discovery.ModResolutionException;
 import org.quiltmc.loader.impl.filesystem.PartiallyWrittenIOException;
 import org.quiltmc.loader.impl.filesystem.QuiltMapFileSystem;
@@ -46,6 +49,10 @@ import org.quiltmc.loader.impl.filesystem.QuiltUnifiedFileSystem;
 import org.quiltmc.loader.impl.filesystem.QuiltUnifiedPath;
 import org.quiltmc.loader.impl.filesystem.QuiltZipFileSystem;
 import org.quiltmc.loader.impl.filesystem.QuiltZipPath;
+import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
+import org.quiltmc.loader.impl.launch.knot.mixin.MixinServiceTransformCache;
+import org.quiltmc.loader.impl.launch.knot.mixin.QuiltMixinBootstrap;
+import org.quiltmc.loader.impl.launch.knot.mixin.unimportant.MixinServiceKnotBootstrap;
 import org.quiltmc.loader.impl.util.FilePreloadHelper;
 import org.quiltmc.loader.impl.util.FileSystemUtil;
 import org.quiltmc.loader.impl.util.HashUtil;
@@ -54,6 +61,8 @@ import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 import org.quiltmc.loader.impl.util.SystemProperties;
 import org.quiltmc.loader.impl.util.log.Log;
 import org.quiltmc.loader.impl.util.log.LogCategory;
+import org.spongepowered.asm.mixin.transformer.IMixinTransformer;
+import org.spongepowered.asm.mixin.transformer.throwables.IllegalClassLoadError;
 
 @QuiltLoaderInternal(QuiltLoaderInternalType.NEW_INTERNAL)
 public class TransformCache {
@@ -65,6 +74,8 @@ public class TransformCache {
 
 	private static final String CACHE_FILE = "files.zip";
 	private static final String FILE_TRANSFORM_COMPLETE = "__TRANSFORM_COMPLETE";
+
+	private IMixinTransformer mixinTransformer;
 
 	public static TransformCacheResult populateTransformBundle(Path transformCacheFolder, List<ModLoadOption> modList,
 		ModSolveResult result) throws ModResolutionException {
@@ -255,7 +266,7 @@ public class TransformCache {
 			throw new ModResolutionException("Failed to create the transform cache parent directory!", e);
 		}
 
-		if (!Boolean.getBoolean(SystemProperties.DISABLE_OPTIMIZED_COMPRESSED_TRANSFORM_CACHE)) {
+		if (false) { // todo
 			try (QuiltUnifiedFileSystem fs = new QuiltUnifiedFileSystem("transform-cache", true)) {
 				QuiltUnifiedPath root = fs.getRoot();
 				populateTransformCache(root, modList, result);
@@ -302,7 +313,44 @@ public class TransformCache {
 
 	private static void populateTransformCache(Path root, List<ModLoadOption> modList, ModSolveResult solveResult)
 		throws ModResolutionException, IOException {
-		QuiltMapFileSystem.dumpEntries(root.getFileSystem(), "after-remap");
+		// Copy everything that's not in the modsToRemap list
+		for (ModLoadOption mod : modList) {
+			if (mod.namespaceMappingFrom() == null && mod.needsChasmTransforming() && !QuiltLoaderImpl.MOD_ID.equals(mod.id())) {
+				final boolean onlyTransformableFiles = mod.couldResourcesChange();
+				Path modSrc = mod.resourceRoot();
+				Path modDst = root.resolve(mod.id());
+				Data4MixinService.resourceRoots.add(modDst);
+				try(var stream = Files.walk(modSrc)) {
+					stream.forEach(path -> {
+						if (!FasterFiles.isRegularFile(path)) {
+							// TODO: return space optimizations to transform cache
+							// Only copy class files, since those files are the only files modified by chasm
+//							return;
+						}
+						if (onlyTransformableFiles) {
+							String fileName = path.getFileName().toString();
+							if (!fileName.endsWith(".class") && !fileName.endsWith(".chasm")) {
+								// Only copy class files, since those files are the only files modified by chasm
+								// (and chasm files, since they are read by chasm)
+//								return;
+							}
+						}
+						Path sub = modSrc.relativize(path);
+						Path dst = modDst.resolve(sub.toString().replace(modSrc.getFileSystem().getSeparator(), modDst.getFileSystem().getSeparator()));
+						try {
+							FasterFiles.createDirectories(dst.getParent());
+							Files.copy(path, dst);
+						} catch (IOException e) {
+							throw new Error(e);
+						}
+					});
+				} catch (IOException io) {
+					throw new Error(io);
+				}
+			}
+		}
+
+		QuiltMapFileSystem.dumpEntries(root.getFileSystem(), "after-copy");
 
 		InternalsHiderTransform internalsHider = new InternalsHiderTransform(InternalsHiderTransform.Target.MOD);
 		Map<Path, ModLoadOption> classes = new HashMap<>();
@@ -317,8 +365,21 @@ public class TransformCache {
 			return null;
 		});
 
+		QuiltMixinBootstrap.init(MinecraftQuiltLoader.getEnvironmentType(), modList.stream().map(ModLoadOption::metadata).toList());
+		QuiltLauncherBase.finishMixinBootstrapping();
+		var mixinTransformer = MixinServiceTransformCache.getTransformer();
+
 		for (Map.Entry<Path, ModLoadOption> entry : classes.entrySet()) {
 			byte[] classBytes = Files.readAllBytes(entry.getKey());
+			var key = entry.getKey().toString().replace('/', '.'); // replace / with .
+			key = key.substring(key.indexOf('.', 1) + 1); // remove mod id
+			key = key.substring(0, key.length() - 6); // remove .class
+			try {
+				classBytes = mixinTransformer.transformClassBytes(key, key, classBytes);
+			} catch (IllegalClassLoadError ignored) {
+				// oops, we just tried to transform something mixin won't let us (usually a @Mixin class), so we'll just ignore it
+				// we could technically detect this ourselves, but why not let Mixin do it for us
+			}
 			byte[] newBytes = internalsHider.run(entry.getValue(), classBytes);
 			if (newBytes != null) {
 				Files.write(entry.getKey(), newBytes);
@@ -326,6 +387,7 @@ public class TransformCache {
 		}
 
 		internalsHider.finish();
+		Data4MixinService.resourceRoots.clear(); // just in case
 	}
 
 	private static void forEachClassFile(Path root, List<ModLoadOption> modList, ClassConsumer action)
@@ -340,42 +402,42 @@ public class TransformCache {
 		if (!Files.isDirectory(root)) {
 			return;
 		}
-		Files.walkFileTree(root, new SimpleFileVisitor<Path>() {
+		Files.walkFileTree(root, new SimpleFileVisitor<>() {
 
-			@Override
-			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-				String folderName = Objects.toString(dir.getFileName());
-				if (folderName != null && !couldBeJavaElement(folderName, false)) {
-					return FileVisitResult.SKIP_SUBTREE;
-				}
-				return FileVisitResult.CONTINUE;
-			}
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                String folderName = Objects.toString(dir.getFileName());
+                if (folderName != null && !couldBeJavaElement(folderName, false)) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                return FileVisitResult.CONTINUE;
+            }
 
-			@Override
-			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-				String fileName = file.getFileName().toString();
-				if (fileName.endsWith(".class") && couldBeJavaElement(fileName, true)) {
-					byte[] result = action.run(mod, file);
-					if (result != null) {
-						Files.write(file, result);
-					}
-				}
-				return FileVisitResult.CONTINUE;
-			}
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                String fileName = file.getFileName().toString();
+                if (fileName.endsWith(".class") && couldBeJavaElement(fileName, true)) {
+                    byte[] result = action.run(mod, file);
+                    if (result != null) {
+                        Files.write(file, result);
+                    }
+                }
+                return FileVisitResult.CONTINUE;
+            }
 
-			private boolean couldBeJavaElement(String name, boolean ignoreClassSuffix) {
-				int end = name.length();
-				if (ignoreClassSuffix) {
-					end -= ".class".length();
-				}
-				for (int i = 0; i < end; i++) {
-					if (name.charAt(i) == '.') {
-						return false;
-					}
-				}
-				return true;
-			}
-		});
+            private boolean couldBeJavaElement(String name, boolean ignoreClassSuffix) {
+                int end = name.length();
+                if (ignoreClassSuffix) {
+                    end -= ".class".length();
+                }
+                for (int i = 0; i < end; i++) {
+                    if (name.charAt(i) == '.') {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        });
 	}
 
 	@FunctionalInterface

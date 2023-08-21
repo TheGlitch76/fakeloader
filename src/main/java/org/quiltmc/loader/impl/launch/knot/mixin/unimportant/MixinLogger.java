@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.quiltmc.loader.impl.launch.knot;
+package org.quiltmc.loader.impl.launch.knot.mixin.unimportant;
 
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -32,13 +32,13 @@ import org.spongepowered.asm.logging.Level;
 import org.spongepowered.asm.logging.LoggerAdapterAbstract;
 
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_EXPOSED)
-final class MixinLogger extends LoggerAdapterAbstract {
+public final class MixinLogger extends LoggerAdapterAbstract {
 	private static final Map<String, ILogger> LOGGER_MAP = new ConcurrentHashMap<>();
 	private static final Map<Level, LogLevel> LEVEL_MAP = createLevelMap();
 
 	private final LogCategory logCategory;
 
-	static ILogger get(String name) {
+	public static ILogger get(String name) {
 		return LOGGER_MAP.computeIfAbsent(name, MixinLogger::new);
 	}
 
@@ -50,7 +50,7 @@ final class MixinLogger extends LoggerAdapterAbstract {
 
 	@Override
 	public String getType() {
-		return "Fabric Mixin Logger";
+		return "Faro Mixin Logger";
 	}
 
 	@Override

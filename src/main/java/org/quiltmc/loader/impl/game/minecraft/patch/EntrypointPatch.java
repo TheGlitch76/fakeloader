@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
+
+import org.quiltmc.loader.impl.game.minecraft.MinecraftGameProvider;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -36,7 +38,6 @@ import org.quiltmc.loader.api.VersionInterval;
 import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.impl.entrypoint.GamePatch;
 
-import org.quiltmc.loader.impl.game.minecraft.MinecraftGameProvider;
 import org.quiltmc.loader.impl.launch.common.QuiltLauncher;
 import org.quiltmc.loader.impl.util.log.Log;
 import org.quiltmc.loader.impl.util.log.LogCategory;
@@ -438,7 +439,7 @@ public class EntrypointPatch extends GamePatch {
 					it.add(new LdcInsnNode("."));
 					it.add(new MethodInsnNode(Opcodes.INVOKESPECIAL, "java/io/File", "<init>", "(Ljava/lang/String;)V", false)); */
 				it.add(new InsnNode(Opcodes.ACONST_NULL));
-				it.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "org/quiltmc/loader/impl/game/minecraft/applet/AppletMain", "hookGameDir", "(Ljava/io/File;)Ljava/io/File;", false));
+				it.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "minecraft/applet/AppletMain", "hookGameDir", "(Ljava/io/File;)Ljava/io/File;", false));
 				it.add(new VarInsnNode(Opcodes.ALOAD, 0));
 				finishEntrypoint(type, it);
 			} else {
@@ -446,7 +447,7 @@ public class EntrypointPatch extends GamePatch {
 				ListIterator<AbstractInsnNode> it = gameConstructor.instructions.iterator();
 				moveAfter(it, Opcodes.INVOKESPECIAL); /* Object.init */
 				it.add(new FieldInsnNode(Opcodes.GETSTATIC, gameClass.name, runDirectory.name, runDirectory.desc));
-				it.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "org/quiltmc/loader/impl/game/minecraft/applet/AppletMain", "hookGameDir", "(Ljava/io/File;)Ljava/io/File;", false));
+				it.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "minecraft/applet/AppletMain", "hookGameDir", "(Ljava/io/File;)Ljava/io/File;", false));
 				it.add(new FieldInsnNode(Opcodes.PUTSTATIC, gameClass.name, runDirectory.name, runDirectory.desc));
 
 				it = gameMethod.instructions.iterator();

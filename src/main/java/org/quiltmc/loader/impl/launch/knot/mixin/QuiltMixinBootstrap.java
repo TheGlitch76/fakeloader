@@ -15,16 +15,20 @@
  * limitations under the License.
  */
 
-package org.quiltmc.loader.impl.launch.common;
+package org.quiltmc.loader.impl.launch.knot.mixin;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.quiltmc.loader.api.ModContainer;
 import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.api.plugin.ModContainerExt;
+import org.quiltmc.loader.api.plugin.ModMetadataExt;
 import org.quiltmc.loader.impl.QuiltLoaderImpl;
 import org.quiltmc.loader.impl.metadata.qmj.InternalModMetadata;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
@@ -47,46 +51,41 @@ public final class QuiltMixinBootstrap {
 		Mixins.addConfiguration(configuration);
 	}
 
-	static Set<String> getMixinConfigs(QuiltLoaderImpl loader, Environment type) {
-		return loader.getAllMods().stream()
-				.map(ModContainer::metadata)
-				.filter((m) -> m instanceof InternalModMetadata)
-				.flatMap((m) -> ((InternalModMetadata) m).mixins(type).stream())
+	static Set<String> getMixinConfigs(Collection<ModMetadataExt> metadata, Environment type) {
+		return metadata.stream()
+				.flatMap((m) -> m.mixins(type).stream())
 				.filter(s -> s != null && !s.isEmpty())
 				.collect(Collectors.toSet());
 	}
 
-	public static void init(Environment side, QuiltLoaderImpl loader) {
+	public static void init(Environment side, Collection<ModMetadataExt> metadatas) {
 		if (initialized) {
 			throw new IllegalStateException("QuiltMixinBootstrap has already been initialized!");
 		}
 
 		MixinBootstrap.init();
-		getMixinConfigs(loader, side).forEach(QuiltMixinBootstrap::addConfiguration);
+		getMixinConfigs(metadatas, side).forEach(QuiltMixinBootstrap::addConfiguration);
 
-		Map<String, ModContainerExt> configToModMap = new HashMap<>();
+		Map<String, ModMetadataExt> configToModMap = new HashMap<>();
 
-		for (ModContainerExt mod : loader.getAllModsExt()) {
-			for (String config : mod.metadata().mixins(side)) {
+
+		for (var metadata : metadatas) {
+			for (String config : metadata.mixins(side)) {
 				// MixinServiceKnot decodes this to load the config from the right mod
-				String prefixedConfig = "#" + mod.metadata().id() + ":" + config;
-				ModContainerExt prev = configToModMap.putIfAbsent(prefixedConfig, mod);
+				String prefixedConfig = "#" + metadata.id() + ":" + config;
+				var prev = configToModMap.putIfAbsent(prefixedConfig, metadata);
 				// This will only happen if a mod declares a mixin config *twice*
 				if (prev != null) throw new RuntimeException(String.format("Non-unique Mixin config name %s used by the mods %s and %s",
-						config, prev.metadata().id(), mod.metadata().id()));
+						config, prev.id(), metadata.id()));
 
 				try {
 					Mixins.addConfiguration(prefixedConfig);
 				} catch (Throwable t) {
-					throw new RuntimeException(String.format("Error creating Mixin config %s for mod %s", config, mod.metadata().id()), t);
+					throw new RuntimeException(String.format("Error creating Mixin config %s for mod %s", config, metadata.id()), t);
 				}
 			}
 		}
 
-		for (Config config : Mixins.getConfigs()) {
-			ModContainerExt mod = configToModMap.get(config.getName());
-			if (mod == null) continue;
-		}
 
 		try {
 			IMixinConfig.class.getMethod("decorate", String.class, Object.class);
@@ -99,13 +98,13 @@ public final class QuiltMixinBootstrap {
 	}
 
 	public static final class MixinConfigDecorator {
-		static void apply(Map<String, ModContainerExt> configToModMap) {
+		static void apply(Map<String, ModMetadataExt> configToModMap) {
 			for (Config rawConfig : Mixins.getConfigs()) {
-				ModContainerExt mod = configToModMap.get(rawConfig.getName());
+				ModMetadataExt mod = configToModMap.get(rawConfig.getName());
 				if (mod == null) continue;
 
 				IMixinConfig config = rawConfig.getConfig();
-				config.decorate(FabricUtil.KEY_MOD_ID, mod.metadata().id());
+				config.decorate(FabricUtil.KEY_MOD_ID, mod.id());
 				config.decorate(FabricUtil.KEY_COMPATIBILITY, FabricUtil.COMPATIBILITY_LATEST);
 			}
 		}

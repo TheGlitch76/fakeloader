@@ -252,11 +252,6 @@ class KnotClassLoader extends SecureClassLoader {
 		}
 	}
 
-	public void addURL(URL url) {
-		fakeLoader.addURL(url);
-		minimalLoader.addURL(url);
-	}
-
 	public void addPath(Path root, ModContainer mod, URL origin) {
 		URL asUrl;
 		try {

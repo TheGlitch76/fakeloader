@@ -15,19 +15,31 @@
  * limitations under the License.
  */
 
-package org.quiltmc.loader.impl.launch.knot;
+package org.quiltmc.loader.impl.launch.knot.mixin;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Optional;
+
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.tree.ClassNode;
 import org.quiltmc.loader.api.FasterFiles;
 import org.quiltmc.loader.api.ModContainer;
 import org.quiltmc.loader.api.QuiltLoader;
-import org.quiltmc.loader.impl.QuiltLoaderImpl;
+import org.quiltmc.loader.impl.Data4MixinService;
 import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
+import org.quiltmc.loader.impl.launch.knot.mixin.unimportant.MixinLogger;
+import org.quiltmc.loader.impl.util.FileUtil;
+import org.quiltmc.loader.impl.util.LoaderUtil;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
-import org.quiltmc.loader.impl.util.log.Log;
-import org.quiltmc.loader.impl.util.log.LogCategory;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.launch.platform.container.ContainerHandleURI;
 import org.spongepowered.asm.launch.platform.container.IContainerHandle;
 import org.spongepowered.asm.logging.ILogger;
@@ -44,37 +56,31 @@ import org.spongepowered.asm.service.ITransformer;
 import org.spongepowered.asm.service.ITransformerProvider;
 import org.spongepowered.asm.util.ReEntranceLock;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Optional;
-
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_EXPOSED)
-public class MixinServiceKnot implements IMixinService, IClassProvider, IClassBytecodeProvider, ITransformerProvider, IClassTracker {
+public class MixinServiceTransformCache implements IMixinService, IClassProvider, IClassBytecodeProvider, ITransformerProvider, IClassTracker {
 	static IMixinTransformer transformer;
 
 	private final ReEntranceLock lock;
 
-	public MixinServiceKnot() {
+	public MixinServiceTransformCache() {
 		lock = new ReEntranceLock(1);
 	}
 
-	public byte[] getClassBytes(String name, String transformedName) throws IOException {
-		return QuiltLauncherBase.getLauncher().getClassByteArray(name, true);
-	}
 
 	public byte[] getClassBytes(String name, boolean runTransformers) throws ClassNotFoundException, IOException {
-		byte[] classBytes = QuiltLauncherBase.getLauncher().getClassByteArray(name, runTransformers);
-
-		if (classBytes != null) {
-			return classBytes;
-		} else {
-			throw new ClassNotFoundException(name);
+		try (var stream = this.getResourceAsStream(name.replace('.', '/') + ".class")) {
+			if (stream == null) {
+				URL url = MixinServiceTransformCache.class.getClassLoader().getResource(LoaderUtil.getClassFileName(name));
+				try (InputStream inputStream = (url != null ? url.openStream() : null)) {
+					if (inputStream == null) {
+						throw new ClassNotFoundException(name);
+					}
+					return FileUtil.readAllBytes(inputStream);
+				}
+			}
+			return stream.readAllBytes();
+		} catch (UncheckedIOException e) {
+			throw new IOException(e);
 		}
 	}
 
@@ -100,22 +106,22 @@ public class MixinServiceKnot implements IMixinService, IClassProvider, IClassBy
 
 	@Override
 	public Class<?> findClass(String name) throws ClassNotFoundException {
-		return QuiltLauncherBase.getLauncher().getTargetClassLoader().loadClass(name);
+		throw new UnsupportedOperationException(name);
 	}
 
 	@Override
 	public Class<?> findClass(String name, boolean initialize) throws ClassNotFoundException {
-		return Class.forName(name, initialize, QuiltLauncherBase.getLauncher().getTargetClassLoader());
+		throw new UnsupportedOperationException(name + " " + initialize);
 	}
 
 	@Override
 	public Class<?> findAgentClass(String name, boolean initialize) throws ClassNotFoundException {
-		return Class.forName(name, initialize, Knot.class.getClassLoader());
+		throw new UnsupportedOperationException(name + " " + initialize);
 	}
 
 	@Override
 	public String getName() {
-		return QuiltLauncherBase.getLauncher() instanceof Knot ? "Knot/Quilt" : "Launchwrapper/Quilt";
+		return "An eldritch horror beyond comprehension";
 	}
 
 	@Override
@@ -205,26 +211,34 @@ public class MixinServiceKnot implements IMixinService, IClassProvider, IClassBy
 			if (colon > 0) {
 				String mod = name.substring(1, colon);
 				String resource = name.substring(colon + 1);
-				Optional<ModContainer> modContainer = QuiltLoader.getModContainer(mod);
-				if (modContainer.isPresent()) {
-					Path modResource = modContainer.get().rootPath().resolve(resource);
-					try {
-						if (!FasterFiles.exists(modResource)) {
-							URL url = QuiltLauncherBase.getLauncher().getResourceURL(resource);
-							if (url != null) {
-								Log.warn(LogCategory.GENERAL, "Failed to find the resource '" + resource + "' in mod '" + mod + "', but did find it in a different place: " + url);
-								return url.openStream();
-							}
-							return null;
-						}
-						return Files.newInputStream(modResource);
-					} catch (IOException e) {
-						throw new RuntimeException("Failed to read file '" + resource + "' from mod '" + mod + "'!", e);
-					}
+				// TODO: bring back optimization
+				name = resource;
+//				Optional<ModContainer> modContainer = QuiltLoader.getModContainer(mod);
+//				if (modContainer.isPresent()) {
+//					Path modResource = modContainer.get().rootPath().resolve(resource);
+//					try {
+//						if (!FasterFiles.exists(modResource)) {
+//							throw new UnsupportedOperationException("Couldn't find mod-specific resource");
+//						}
+//						return Files.newInputStream(modResource);
+//					} catch (IOException e) {
+//						throw new RuntimeException("Failed to read file '" + resource + "' from mod '" + mod + "'!", e);
+//					}
+//				}
+			}
+		}
+		for (Path resourceRoot : Data4MixinService.resourceRoots) {
+			Path ret = resourceRoot.resolve(name);
+			if (FasterFiles.exists(ret)) {
+				try {
+					return Files.newInputStream(ret);
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
 				}
 			}
 		}
-		return QuiltLauncherBase.getLauncher().getResourceAsStream(name);
+
+		return null;
 	}
 
 	@Override
@@ -232,7 +246,7 @@ public class MixinServiceKnot implements IMixinService, IClassProvider, IClassBy
 
 	@Override
 	public boolean isClassLoaded(String className) {
-		return QuiltLauncherBase.getLauncher().isClassLoaded(className);
+		return false; // Could this cause problems? Absolutely!
 	}
 
 	@Override
@@ -273,7 +287,7 @@ public class MixinServiceKnot implements IMixinService, IClassProvider, IClassBy
 		return MixinLogger.get(name);
 	}
 
-	static IMixinTransformer getTransformer() {
+	public static IMixinTransformer getTransformer() {
 		return transformer;
 	}
 }

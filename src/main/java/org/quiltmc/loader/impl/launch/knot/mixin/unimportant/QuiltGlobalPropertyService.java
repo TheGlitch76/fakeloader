@@ -15,9 +15,10 @@
  * limitations under the License.
  */
 
-package org.quiltmc.loader.impl.launch.knot;
+package org.quiltmc.loader.impl.launch.knot.mixin.unimportant;
 
 import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
+import org.quiltmc.loader.impl.launch.knot.mixin.unimportant.MixinStringPropertyKey;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 import org.spongepowered.asm.service.IGlobalPropertyService;

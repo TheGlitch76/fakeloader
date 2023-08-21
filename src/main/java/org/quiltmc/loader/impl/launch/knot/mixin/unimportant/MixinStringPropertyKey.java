@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.quiltmc.loader.impl.launch.knot;
+package org.quiltmc.loader.impl.launch.knot.mixin.unimportant;
 
 import java.util.Objects;
 

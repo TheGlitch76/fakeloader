@@ -22,10 +22,9 @@ import org.quiltmc.loader.api.minecraft.Environment;
 import org.quiltmc.loader.impl.FormattedException;
 import org.quiltmc.loader.impl.QuiltLoaderImpl;
 import org.quiltmc.loader.impl.config.QuiltConfigImpl;
-import org.quiltmc.loader.impl.entrypoint.EntrypointUtils;
 import org.quiltmc.loader.impl.game.GameProvider;
 import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
-import org.quiltmc.loader.impl.launch.common.QuiltMixinBootstrap;
+import org.quiltmc.loader.impl.launch.knot.mixin.QuiltMixinBootstrap;
 import org.quiltmc.loader.impl.util.FileUtil;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
@@ -33,7 +32,6 @@ import org.quiltmc.loader.impl.util.SystemProperties;
 import org.quiltmc.loader.impl.util.UrlUtil;
 import org.quiltmc.loader.impl.util.log.Log;
 import org.quiltmc.loader.impl.util.log.LogCategory;
-import org.spongepowered.asm.launch.MixinBootstrap;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,7 +43,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -145,11 +142,6 @@ public final class Knot extends QuiltLauncherBase {
 
 		QuiltLoaderImpl.INSTANCE.loadAccessWideners();
 
-		MixinBootstrap.init();
-		QuiltMixinBootstrap.init(getEnvironmentType(), loader);
-		QuiltLauncherBase.finishMixinBootstrapping();
-
-		classLoader.getDelegate().initializeTransformers();
 
 		provider.unlockClassPath(this);
 		unlocked = true;
@@ -227,30 +219,8 @@ public final class Knot extends QuiltLauncherBase {
 	 */
 	private static GameProvider findEmbedddedGameProvider() {
 		try {
-			Path flPath = UrlUtil.asPath(Knot.class.getProtectionDomain().getCodeSource().getLocation());
-			if (!flPath.getFileName().toString().endsWith(".jar")) return null; // not a jar
-
-			try (ZipFile zf = new ZipFile(flPath.toFile())) {
-				ZipEntry entry = zf.getEntry("META-INF/services/org.quiltmc.loader.impl.game.GameProvider"); // same file as used by service loader
-				if (entry == null) return null;
-
-				try (InputStream is = zf.getInputStream(entry)) {
-					byte[] buffer = FileUtil.readAllBytes(is);
-
-					String content = new String(buffer, 0, buffer.length, StandardCharsets.UTF_8).trim();
-					if (content.indexOf('\n') >= 0) return null; // potentially more than one entry -> bail out
-
-					int pos = content.indexOf('#');
-					if (pos >= 0) content = content.substring(0, pos).trim();
-
-					if (!content.isEmpty()) {
-						return (GameProvider) Class.forName(content).getConstructor().newInstance();
-					}
-				}
-			}
-
-			return null;
-		} catch (IOException | ReflectiveOperationException e) {
+			return (GameProvider) Class.forName("org.quiltmc.loader.impl.game.minecraft.MinecraftGameProvider").getConstructor().newInstance();
+		} catch (ReflectiveOperationException e) {
 			throw new RuntimeException(e);
 		}
 	}

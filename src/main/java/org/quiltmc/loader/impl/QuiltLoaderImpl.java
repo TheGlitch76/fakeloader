@@ -33,6 +33,7 @@ import java.nio.file.Paths;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -56,7 +57,6 @@ import org.objectweb.asm.Opcodes;
 import org.quiltmc.loader.api.FasterFiles;
 import org.quiltmc.loader.api.LanguageAdapter;
 import org.quiltmc.loader.api.MappingResolver;
-import org.quiltmc.loader.api.ModContainer.BasicSourceType;
 import org.quiltmc.loader.api.ModMetadata.ProvidedMod;
 import org.quiltmc.loader.api.QuiltLoader;
 import org.quiltmc.loader.api.Version;
@@ -91,9 +91,8 @@ import org.quiltmc.loader.impl.gui.QuiltJsonGuiTreeTab;
 import org.quiltmc.loader.impl.launch.common.QuiltCodeSource;
 import org.quiltmc.loader.impl.launch.common.QuiltLauncher;
 import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
-import org.quiltmc.loader.impl.launch.common.QuiltMixinBootstrap;
+import org.quiltmc.loader.impl.launch.knot.mixin.MixinServiceTransformCache;
 import org.quiltmc.loader.impl.metadata.qmj.AdapterLoadableClassEntry;
-import org.quiltmc.loader.impl.metadata.qmj.InternalModMetadata;
 import org.quiltmc.loader.impl.metadata.qmj.ProvidedModContainer;
 import org.quiltmc.loader.impl.metadata.qmj.ProvidedModMetadata;
 import org.quiltmc.loader.impl.patch.PatchLoader;
@@ -115,7 +114,6 @@ import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 import org.quiltmc.loader.impl.util.SystemProperties;
 import org.quiltmc.loader.impl.util.log.Log;
 import org.quiltmc.loader.impl.util.log.LogCategory;
-import org.spongepowered.asm.mixin.FabricUtil;
 
 import net.fabricmc.accesswidener.AccessWidener;
 import net.fabricmc.accesswidener.AccessWidenerReader;
@@ -351,9 +349,7 @@ public final class QuiltLoaderImpl {
 		Set<String> modsToCopy = new HashSet<>();
 		String jarCopiedMods = System.getProperty(SystemProperties.JAR_COPIED_MODS);
 		if (jarCopiedMods != null) {
-			for (String id : jarCopiedMods.split(",")) {
-				modsToCopy.add(id);
-			}
+			modsToCopy.addAll(Arrays.asList(jarCopiedMods.split(",")));
 		}
 
 		long zipSubCopyTotal = 0;
@@ -410,7 +406,6 @@ public final class QuiltLoaderImpl {
 				resourceRoot = copyToJar(transformCacheFolder, modOption, resourceRoot);
 				jarCopyTotal += System.nanoTime() - start;
 			}
-
 			addMod(modOption.convertToMod(resourceRoot));
 		}
 

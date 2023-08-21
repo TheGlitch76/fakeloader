@@ -110,7 +110,7 @@ public abstract class QuiltLauncherBase implements QuiltLauncher {
 		});
 	}
 
-	protected static void finishMixinBootstrapping() {
+	public static void finishMixinBootstrapping() {
 		if (mixinReady) {
 			throw new RuntimeException("Must not call QuiltLauncherBase.finishMixinBootstrapping() twice!");
 		}

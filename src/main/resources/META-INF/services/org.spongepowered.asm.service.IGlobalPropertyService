@@ -1,1 +1,1 @@
-org.quiltmc.loader.impl.launch.knot.QuiltGlobalPropertyService
+org.quiltmc.loader.impl.launch.knot.mixin.unimportant.QuiltGlobalPropertyService

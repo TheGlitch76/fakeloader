@@ -15,24 +15,26 @@
  * limitations under the License.
  */
 
-package org.quiltmc.loader.impl.launch.knot;
-
-import java.util.Collection;
-import java.util.Collections;
+package org.quiltmc.loader.impl.launch.knot.mixin.unimportant;
 
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
-import org.spongepowered.asm.launch.platform.container.IContainerHandle;
+import org.spongepowered.asm.service.IMixinServiceBootstrap;
 
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_EXPOSED)
-public class MixinContainerHandleMod implements IContainerHandle {
+public class MixinServiceKnotBootstrap implements IMixinServiceBootstrap {
 	@Override
-	public String getAttribute(String name) {
-		return null;
+	public String getName() {
+		return "Knot your business";
 	}
 
 	@Override
-	public Collection<IContainerHandle> getNestedContainers() {
-		return Collections.emptyList();
+	public String getServiceClassName() {
+		return "org.quiltmc.loader.impl.knot.mixin.MixinServiceTransformCache";
+	}
+
+	@Override
+	public void bootstrap() {
+		// already done in Knot
 	}
 }
