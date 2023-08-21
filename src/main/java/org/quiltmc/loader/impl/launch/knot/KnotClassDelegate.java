@@ -18,7 +18,7 @@ package org.quiltmc.loader.impl.launch.knot;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Constructor;
+import java.io.UncheckedIOException;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
@@ -42,12 +42,10 @@ import org.quiltmc.loader.impl.QuiltLoaderImpl;
 import org.quiltmc.loader.impl.game.GameProvider;
 import org.quiltmc.loader.impl.launch.common.QuiltCodeSource;
 import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
-import org.quiltmc.loader.impl.launch.knot.mixin.MixinServiceTransformCache;
 import org.quiltmc.loader.impl.patch.PatchLoader;
 import org.quiltmc.loader.impl.transformer.PackageEnvironmentStrippingData;
 import org.quiltmc.loader.impl.transformer.QuiltTransformer;
 import org.quiltmc.loader.impl.util.FileSystemUtil;
-import org.quiltmc.loader.impl.util.FileUtil;
 import org.quiltmc.loader.impl.util.LoaderUtil;
 import org.quiltmc.loader.impl.util.ManifestUtil;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
@@ -57,7 +55,6 @@ import org.quiltmc.loader.impl.util.UrlConversionException;
 import org.quiltmc.loader.impl.util.UrlUtil;
 import org.quiltmc.loader.impl.util.log.Log;
 import org.quiltmc.loader.impl.util.log.LogCategory;
-import org.spongepowered.asm.mixin.transformer.IMixinTransformer;
 
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_EXPOSED)
 class KnotClassDelegate {
@@ -96,7 +93,6 @@ class KnotClassDelegate {
 	private final boolean isDevelopment;
 	private final Environment environment;
 
-	private boolean transformInitialized = false;
 	private boolean transformFinishedLoading = false;
 	private String transformCacheUrl;
 	private final Map<String, String[]> allowedPrefixes = new ConcurrentHashMap<>();
@@ -105,9 +101,6 @@ class KnotClassDelegate {
 	/** Set of {@link URL}s which should not be loaded from the parent, because they have been replaced by URLs/paths
 	 * in this loader. */
 	private final Set<String> parentHiddenUrls = Collections.newSetFromMap(new ConcurrentHashMap<>());
-
-	/** Map of package to whether we can load it in this environment. */
-	private final Map<String, Boolean> packageSideCache = new ConcurrentHashMap<>();
 
 	KnotClassDelegate(boolean isDevelopment, Environment environment, KnotClassLoader itf, GameProvider provider) {
 		this.isDevelopment = isDevelopment;
@@ -211,7 +204,13 @@ class KnotClassDelegate {
 			}
 		}
 
-		byte[] input = getPostMixinClassByteArray(url, name);
+		byte[] input;
+		try {
+			input = getRawClassByteArray(url, name);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+
 		if (input == null) return null;
 
 		if (allowFromParent) {
@@ -245,15 +244,6 @@ class KnotClassDelegate {
 			// TODO: package definition stub
 			String pkgString = name.substring(0, pkgDelimiterPos);
 
-			final boolean allowFromParentFinal = allowFromParent;
-			Boolean permitted = packageSideCache.computeIfAbsent(pkgString, pkgName -> {
-				return computeCanLoadPackage(pkgName, allowFromParentFinal);
-			});
-
-			if (permitted != null && !permitted) {
-				throw new RuntimeException("Cannot load package " + pkgString + " in environment type " + environment);
-			}
-
 			Package pkg = itf.getPackage(pkgString);
 
 			if (pkg == null) {
@@ -278,25 +268,9 @@ class KnotClassDelegate {
 				text.append(" ");
 			}
 			text.append("\n");
-			System.out.print(text.toString());
+			System.out.print(text);
 		}
 		return c;
-	}
-
-	boolean computeCanLoadPackage(String pkgName, boolean allowFromParent) {
-		String fileName = pkgName + ".package-info";
-		try {
-			byte[] bytes = getRawClassByteArray(fileName, allowFromParent);
-			if (bytes == null) {
-				// No package-info class file
-				return true;
-			}
-			PackageEnvironmentStrippingData data = new PackageEnvironmentStrippingData(QuiltLoaderImpl.ASM_VERSION, environment);
-			new ClassReader(bytes).accept(data, ClassReader.SKIP_CODE | ClassReader.SKIP_FRAMES);
-			return !data.stripEntirePackage;
-		} catch (IOException e) {
-			throw new RuntimeException("Unable to load " + fileName, e);
-		}
 	}
 
 	Metadata getMetadata(String name, URL resourceURL) {
@@ -408,84 +382,6 @@ class KnotClassDelegate {
 		return itf.getResource(LoaderUtil.getClassFileName(name), allowFromParent);
 	}
 
-	public byte[] getPostMixinClassByteArray(String name, boolean allowFromParent) {
-		return getPostMixinClassByteArray(getClassUrl(name, allowFromParent), name);
-	}
-
-	public byte[] getPostMixinClassByteArray(URL url, String name) {
-		byte[] transformedClassArray = getPreMixinClassByteArray(url, name);
-
-		if (!transformInitialized || !canTransformClass(name)) {
-			return transformedClassArray;
-		}
-
-		try {
-			return transformedClassArray;
-		} catch (Throwable t) {
-			String msg = String.format("Mixin transformation of %s failed", name);
-			Log.warn(LogCategory.KNOT, msg, t);
-
-			throw new RuntimeException(msg, t);
-		}
-	}
-
-	public void afterMixinIntiializeFinished() {
-		transformFinishedLoading = true;
-	}
-
-	/**
-	 * Runs all the class transformers except mixin.
-	 */
-	public byte[] getPreMixinClassByteArray(String name, boolean allowFromParent) {
-		return getPreMixinClassByteArray(getClassUrl(name, allowFromParent), name);
-	}
-
-	/**
-	 * Runs all the class transformers except mixin.
-	 */
-	public byte[] getPreMixinClassByteArray(URL classFileURL, String name) {
-		// some of the transformers rely on dot notation
-		name = name.replace('/', '.');
-
-		if (!transformFinishedLoading && LOG_EARLY_CLASS_LOADS) {
-			Log.info(LogCategory.GENERAL, "Loading " + name + " early", new Throwable());
-		}
-
-		if (name.startsWith("org.quiltmc.loader.impl.patch.")) {
-			return PatchLoader.getNewPatchedClass(name);
-		}
-
-		if (!transformInitialized || !canTransformClass(name)) {
-			try {
-				return getRawClassByteArray(classFileURL, name);
-			} catch (IOException e) {
-				throw new RuntimeException("Failed to load class file for '" + name + "'!", e);
-			}
-		}
-
-		byte[] input = provider.getEntrypointTransformer().transform(name);
-
-		if (input == null) {
-			try {
-				input = getRawClassByteArray(classFileURL, name);
-			} catch (IOException e) {
-				throw new RuntimeException("Failed to load class file for '" + name + "'!", e);
-			}
-		}
-
-		if (input != null) {
-			return QuiltTransformer.transform(isDevelopment, environment, name, input);
-		}
-
-		return null;
-	}
-
-	private static boolean canTransformClass(String name) {
-		name = name.replace('/', '.');
-		// Blocking Fabric Loader classes is no longer necessary here as they don't exist on the modding class loader
-		return /* !"net.fabricmc.api.Environment".equals(name) && !name.startsWith("net.fabricmc.loader.") && */ !name.startsWith("org.apache.logging.log4j");
-	}
-
 	public byte[] getRawClassByteArray(String name, boolean allowFromParent) throws IOException {
 		return getRawClassByteArray(getClassUrl(name, allowFromParent), name);
 	}
@@ -495,7 +391,7 @@ class KnotClassDelegate {
 			if (inputStream == null) {
 				return null;
 			}
-			return FileUtil.readAllBytes(inputStream);
+			return inputStream.readAllBytes();
 		}
 	}
 

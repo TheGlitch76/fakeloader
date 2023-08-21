@@ -25,7 +25,6 @@ import org.quiltmc.loader.impl.config.QuiltConfigImpl;
 import org.quiltmc.loader.impl.game.GameProvider;
 import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
 import org.quiltmc.loader.impl.launch.knot.mixin.QuiltMixinBootstrap;
-import org.quiltmc.loader.impl.util.FileUtil;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 import org.quiltmc.loader.impl.util.SystemProperties;
@@ -62,7 +61,6 @@ public final class Knot extends QuiltLauncherBase {
 	private Environment environment;
 	private final List<Path> classPath = new ArrayList<>();
 	private GameProvider provider;
-	private boolean unlocked;
 
 	public static void launch(String[] args, Environment type) {
 		setupUncaughtExceptionHandler();
@@ -140,25 +138,10 @@ public final class Knot extends QuiltLauncherBase {
 		loader.load();
 		loader.freeze();
 
-		QuiltLoaderImpl.INSTANCE.loadAccessWideners();
-
 
 		provider.unlockClassPath(this);
-		unlocked = true;
 
 		QuiltConfigImpl.init();
-
-		try {
-			// If the very first class transformed by mixin is also referenced by a mixin config
-			// then we'll crash due to an "attempted duplicate class definition"
-			// Since this target class is *very unlikely* to be referenced by mixin we forcibly load it.
-			classLoader.loadIntoTarget("org.quiltmc.loader.impl.launch.knot.UnusedEmptyTargetClass");
-		} catch (ClassNotFoundException cnfe) {
-			Log.warn(LogCategory.KNOT, "Early non-mixin-config related class failed to load!");
-			Log.warn(LogCategory.KNOT, "If you get a 'LinkageError' of 'attempted duplicated * definition' after this then this error is the cause!", cnfe);
-		}
-
-		classLoader.getDelegate().afterMixinIntiializeFinished();
 
 		loader.invokePreLaunch();
 
@@ -318,9 +301,6 @@ public final class Knot extends QuiltLauncherBase {
 	}
 
 	private static boolean isMatchingClassLoader(ClassLoader expected, ClassLoader actual) {
-//		if (actual instanceof KnotSeparateClassLoader) {
-//			return ((KnotSeparateClassLoader) actual).getBaseClassLoader() == expected;
-//		}
 		return expected == actual;
 	}
 
@@ -364,17 +344,6 @@ public final class Knot extends QuiltLauncherBase {
 			return null;
 		}
 		return getTargetClassLoader();
-	}
-
-	@Override
-	public byte[] getClassByteArray(String name, boolean runTransformers) throws IOException {
-		if (!unlocked) throw new IllegalStateException("early getClassByteArray access");
-
-		if (runTransformers) {
-			return classLoader.getDelegate().getPreMixinClassByteArray(name, true);
-		} else {
-			return classLoader.getDelegate().getRawClassByteArray(name, true);
-		}
 	}
 
 	@Override

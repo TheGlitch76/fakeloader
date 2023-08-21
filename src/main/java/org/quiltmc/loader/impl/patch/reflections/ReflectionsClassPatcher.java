@@ -27,7 +27,6 @@ import org.objectweb.asm.Opcodes;
 import org.quiltmc.loader.impl.QuiltLoaderImpl;
 import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
 import org.quiltmc.loader.impl.patch.PatchLoader;
-import org.quiltmc.loader.impl.util.FileUtil;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 import org.quiltmc.loader.impl.util.log.Log;
@@ -63,9 +62,7 @@ public class ReflectionsClassPatcher extends PatchLoader {
 	}
 
 	private static byte[] patchUrlType() throws IOException {
-		byte[] input = FileUtil.readAllBytes(
-			ReflectionsClassPatcher.class.getResourceAsStream(INPUT_CLASS + "ReflectionsPathUrlType.class")
-		);
+		byte[] input = ReflectionsClassPatcher.class.getResourceAsStream(INPUT_CLASS + "ReflectionsPathUrlType.class").readAllBytes();
 		ClassReader reader = new ClassReader(input);
 		ClassWriter writer = new ClassWriter(reader, 0);
 		reader.accept(new ClassVisitor(QuiltLoaderImpl.ASM_VERSION, writer) {
@@ -104,9 +101,7 @@ public class ReflectionsClassPatcher extends PatchLoader {
 	}
 
 	private static byte[] patchDir() throws IOException {
-		byte[] input = FileUtil.readAllBytes(
-			ReflectionsClassPatcher.class.getResourceAsStream(INPUT_CLASS + "ReflectionsPathDir.class")
-		);
+		byte[] input = ReflectionsClassPatcher.class.getResourceAsStream(INPUT_CLASS + "ReflectionsPathDir.class").readAllBytes();
 		ClassReader reader = new ClassReader(input);
 		ClassWriter writer = new ClassWriter(reader, 0);
 		reader.accept(new ClassVisitor(QuiltLoaderImpl.ASM_VERSION, writer) {
@@ -123,9 +118,7 @@ public class ReflectionsClassPatcher extends PatchLoader {
 	}
 
 	private static byte[] patchFile() throws IOException {
-		byte[] input = FileUtil.readAllBytes(
-			ReflectionsClassPatcher.class.getResourceAsStream(INPUT_CLASS + "ReflectionsPathFile.class")
-		);
+		byte[] input = ReflectionsClassPatcher.class.getResourceAsStream(INPUT_CLASS + "ReflectionsPathFile.class").readAllBytes();
 		ClassReader reader = new ClassReader(input);
 		ClassWriter writer = new ClassWriter(reader, 0);
 		reader.accept(new ClassVisitor(QuiltLoaderImpl.ASM_VERSION, writer) {

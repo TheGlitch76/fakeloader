@@ -18,29 +18,6 @@ package org.quiltmc.loader.impl.util;
 
 @QuiltLoaderInternal(QuiltLoaderInternalType.LEGACY_EXPOSED)
 public final class StringUtil {
-	public static String capitalize(String s) {
-		if (s.isEmpty()) return s;
-
-		int cp = s.codePointAt(0);
-		int cpUpper = Character.toUpperCase(cp);
-		if (cpUpper == cp) return s;
-
-		StringBuilder ret = new StringBuilder(s.length());
-		ret.appendCodePoint(cpUpper);
-		ret.append(s, Character.charCount(cp), s.length());
-
-		return ret.toString();
-	}
-
-	public static String[] splitNamespaced(String s, String defaultNamespace) {
-		int i = s.indexOf(':');
-
-		if (i >= 0) {
-			return new String[] { s.substring(0, i), s.substring(i + 1) };
-		} else {
-			return new String[] { defaultNamespace, s };
-		}
-	}
 
 	public static String wrapLines(String str, int limit) {
 		if (str.length() < limit) return str;

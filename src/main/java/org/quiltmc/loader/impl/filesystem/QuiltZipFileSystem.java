@@ -53,7 +53,6 @@ import org.quiltmc.loader.impl.filesystem.QuiltUnifiedEntry.QuiltUnifiedFolderRe
 import org.quiltmc.loader.impl.filesystem.QuiltUnifiedEntry.QuiltUnifiedFolderWriteable;
 import org.quiltmc.loader.impl.util.DisconnectableByteChannel;
 import org.quiltmc.loader.impl.util.ExposedByteArrayOutputStream;
-import org.quiltmc.loader.impl.util.FileUtil;
 import org.quiltmc.loader.impl.util.LimitedInputStream;
 import org.quiltmc.loader.impl.util.QuiltLoaderCleanupTasks;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
@@ -745,7 +744,7 @@ public class QuiltZipFileSystem extends QuiltMapFileSystem<QuiltZipFileSystem, Q
 			Error e2 = null;
 			byte[] bytes = new byte[0];
 			try (InputStream from = createInputStream()) {
-				bytes = FileUtil.readAllBytes(from);
+				bytes = from.readAllBytes();
 			} catch (IOException e) {
 				e2 = new Error(e);
 			}

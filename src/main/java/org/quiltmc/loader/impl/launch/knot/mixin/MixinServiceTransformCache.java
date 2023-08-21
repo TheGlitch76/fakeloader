@@ -26,17 +26,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Optional;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
 import org.quiltmc.loader.api.FasterFiles;
-import org.quiltmc.loader.api.ModContainer;
-import org.quiltmc.loader.api.QuiltLoader;
 import org.quiltmc.loader.impl.Data4MixinService;
 import org.quiltmc.loader.impl.launch.common.QuiltLauncherBase;
 import org.quiltmc.loader.impl.launch.knot.mixin.unimportant.MixinLogger;
-import org.quiltmc.loader.impl.util.FileUtil;
 import org.quiltmc.loader.impl.util.LoaderUtil;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
@@ -75,7 +71,7 @@ public class MixinServiceTransformCache implements IMixinService, IClassProvider
 					if (inputStream == null) {
 						throw new ClassNotFoundException(name);
 					}
-					return FileUtil.readAllBytes(inputStream);
+					return inputStream.readAllBytes();
 				}
 			}
 			return stream.readAllBytes();

@@ -13,9 +13,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Minecraft.class)
 public abstract class MixinMinecraftClient {
-	@Overwrite
-	public void setScreen(@Nullable Screen $$0) {}
-
 	@Inject(method = "<init>", at = @At("TAIL"))
 	void onInitFin(GameConfig $$0, CallbackInfo ci) {
 		System.out.println("Mixin applied, somehow");

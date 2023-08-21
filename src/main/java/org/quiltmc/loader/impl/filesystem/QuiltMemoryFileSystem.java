@@ -34,9 +34,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,7 +47,6 @@ import org.quiltmc.loader.api.CachedFileSystem;
 import org.quiltmc.loader.api.FasterFiles;
 import org.quiltmc.loader.impl.filesystem.QuiltUnifiedEntry.QuiltUnifiedFolderReadOnly;
 import org.quiltmc.loader.impl.filesystem.QuiltUnifiedEntry.QuiltUnifiedFolderWriteable;
-import org.quiltmc.loader.impl.util.FileUtil;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 
@@ -296,7 +293,7 @@ public abstract class QuiltMemoryFileSystem extends QuiltMapFileSystem<QuiltMemo
 				} else {
 					// File
 					stats[STAT_MEMORY] += path.name.length() + 28;
-					byte[] bytes = FileUtil.readAllBytes(zipFrom);
+					byte[] bytes = zipFrom.readAllBytes();
 					QuiltMemoryFile.ReadOnly qmf = QuiltMemoryFile.ReadOnly.create(path, bytes, compress);
 					putFileStats(stats, qmf);
 					addEntryAndParents(qmf);

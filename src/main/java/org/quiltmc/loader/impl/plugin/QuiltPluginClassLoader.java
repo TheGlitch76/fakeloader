@@ -26,7 +26,6 @@ import java.util.Set;
 
 import org.quiltmc.loader.api.plugin.ModMetadataExt;
 import org.quiltmc.loader.impl.transformer.InternalsHiderTransform;
-import org.quiltmc.loader.impl.util.FileUtil;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternal;
 import org.quiltmc.loader.impl.util.QuiltLoaderInternalType;
 
@@ -89,7 +88,7 @@ class QuiltPluginClassLoader extends ClassLoader {
 			String path = name.replace(".", from.getFileSystem().getSeparator()).concat(".class");
 
 			try (InputStream is = Files.newInputStream(from.resolve(path))) {
-				byte[] src = FileUtil.readAllBytes(is);
+				byte[] src = is.readAllBytes();
 
 				InternalsHiderTransform transform = new InternalsHiderTransform(InternalsHiderTransform.Target.PLUGIN);
 
